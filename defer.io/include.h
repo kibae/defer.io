@@ -12,6 +12,7 @@
 #include <iostream>
 #include <algorithm>
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>

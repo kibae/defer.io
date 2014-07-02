@@ -10,7 +10,7 @@
 #include "Job.h"
 #include "ThreadPool.h"
 
-Client::Client( int sock, ev::loop_ref loop ): sock(sock), connected(true), requested(0), working(0), rbuf_off(0), wbuf_off(0)
+Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), connected(true), requested(0), working(0), rio(), rbuf(), rbuf_off(0), wio(), wbuf(), wbuf_off(0)
 {
 	fcntl( sock, F_SETFL, fcntl( sock, F_GETFL, 0 ) | O_NONBLOCK );
 
@@ -75,13 +75,13 @@ void Client::read_cb( ev::io &watcher, int revents )
 	{
 		try
 		{
-			Job *job = Job::parse( &rbuf, &rbuf_off );
+			Job *job = Job::parse( rbuf, &rbuf_off );
 			while ( job != NULL )
 			{
 				working++;
 				job->client = this;
 				ThreadPool::push( job );
-				job = Job::parse( &rbuf, &rbuf_off );
+				job = Job::parse( rbuf, &rbuf_off );
 			}
 
 			if ( rbuf.length() <= rbuf_off )

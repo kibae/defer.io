@@ -16,7 +16,7 @@ std::queue<Job *> ThreadPool::jobs;
 pthread_cond_t ThreadPool::_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t ThreadPool::_lock = PTHREAD_MUTEX_INITIALIZER;
 
-int ThreadPool::make( long poolSize )
+int ThreadPool::make( const long poolSize )
 {
 	pool = (Thread **) malloc( sizeof(Thread *) * poolSize );
 	ThreadPool::poolSize = poolSize;

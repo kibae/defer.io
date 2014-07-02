@@ -14,8 +14,16 @@
 		4F374533195F2F500079028C /* defer_io.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4F374532195F2F500079028C /* defer_io.1 */; };
 		4F37453C195F30A30079028C /* libev.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F37453B195F30A30079028C /* libev.4.dylib */; };
 		4F374540195F31100079028C /* Server.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F37453E195F31100079028C /* Server.cpp */; };
+		4FBD4FF519626975001F9784 /* xxhash.c in Sources */ = {isa = PBXBuildFile; fileRef = 4FBD4FF319626975001F9784 /* xxhash.c */; };
 		4FDBB85319608D1500ACB9AC /* Job.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB85119608D1500ACB9AC /* Job.cpp */; };
 		4FDBB8581960961A00ACB9AC /* Datum.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB8561960961A00ACB9AC /* Datum.cpp */; };
+		4FDBB85F1960A49200ACB9AC /* VBucket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB85D1960A49200ACB9AC /* VBucket.cpp */; };
+		4FDBB8621960A4BB00ACB9AC /* VBucketMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB8601960A4BB00ACB9AC /* VBucketMap.cpp */; };
+		4FDBB8651960A4E100ACB9AC /* Balancer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB8631960A4E100ACB9AC /* Balancer.cpp */; };
+		4FDBB8691960A51800ACB9AC /* Config.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB8671960A51800ACB9AC /* Config.cpp */; };
+		4FDBB86C1960A54000ACB9AC /* HealthChecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB86A1960A54000ACB9AC /* HealthChecker.cpp */; };
+		4FF1B41D1961C33400F50B64 /* JSON.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FF1B41B1961C33400F50B64 /* JSON.cpp */; };
+		4FF1B4211961C3CC00F50B64 /* libjson_darwin_libmt.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4FF1B4201961C3CC00F50B64 /* libjson_darwin_libmt.dylib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -44,11 +52,26 @@
 		4F37453B195F30A30079028C /* libev.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libev.4.dylib; path = ../../../../usr/local/Cellar/libev/4.15/lib/libev.4.dylib; sourceTree = "<group>"; };
 		4F37453E195F31100079028C /* Server.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Server.cpp; sourceTree = "<group>"; };
 		4F37453F195F31100079028C /* Server.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Server.h; sourceTree = "<group>"; };
+		4FBD4FF319626975001F9784 /* xxhash.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = xxhash.c; sourceTree = "<group>"; };
+		4FBD4FF419626975001F9784 /* xxhash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = xxhash.h; sourceTree = "<group>"; };
 		4FDBB85119608D1500ACB9AC /* Job.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Job.cpp; sourceTree = "<group>"; };
 		4FDBB85219608D1500ACB9AC /* Job.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Job.h; sourceTree = "<group>"; };
 		4FDBB854196092D400ACB9AC /* include.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = include.h; sourceTree = "<group>"; };
 		4FDBB8561960961A00ACB9AC /* Datum.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Datum.cpp; sourceTree = "<group>"; };
 		4FDBB8571960961A00ACB9AC /* Datum.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Datum.h; sourceTree = "<group>"; };
+		4FDBB85D1960A49200ACB9AC /* VBucket.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VBucket.cpp; sourceTree = "<group>"; };
+		4FDBB85E1960A49200ACB9AC /* VBucket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VBucket.h; sourceTree = "<group>"; };
+		4FDBB8601960A4BB00ACB9AC /* VBucketMap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = VBucketMap.cpp; sourceTree = "<group>"; };
+		4FDBB8611960A4BB00ACB9AC /* VBucketMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VBucketMap.h; sourceTree = "<group>"; };
+		4FDBB8631960A4E100ACB9AC /* Balancer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Balancer.cpp; sourceTree = "<group>"; };
+		4FDBB8641960A4E100ACB9AC /* Balancer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Balancer.h; sourceTree = "<group>"; };
+		4FDBB8671960A51800ACB9AC /* Config.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Config.cpp; sourceTree = "<group>"; };
+		4FDBB8681960A51800ACB9AC /* Config.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Config.h; sourceTree = "<group>"; };
+		4FDBB86A1960A54000ACB9AC /* HealthChecker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HealthChecker.cpp; sourceTree = "<group>"; };
+		4FDBB86B1960A54000ACB9AC /* HealthChecker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HealthChecker.h; sourceTree = "<group>"; };
+		4FF1B41B1961C33400F50B64 /* JSON.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSON.cpp; sourceTree = "<group>"; };
+		4FF1B41C1961C33400F50B64 /* JSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSON.h; sourceTree = "<group>"; };
+		4FF1B4201961C3CC00F50B64 /* libjson_darwin_libmt.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libjson_darwin_libmt.dylib; path = ../../../../opt/local/lib/libjson_darwin_libmt.dylib; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,6 +79,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4FF1B4211961C3CC00F50B64 /* libjson_darwin_libmt.dylib in Frameworks */,
 				4F37453C195F30A30079028C /* libev.4.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -90,6 +114,7 @@
 		4F374524195F2F500079028C = {
 			isa = PBXGroup;
 			children = (
+				4FF1B4201961C3CC00F50B64 /* libjson_darwin_libmt.dylib */,
 				4F37453B195F30A30079028C /* libev.4.dylib */,
 				4F37452F195F2F500079028C /* defer.io */,
 				4F37452E195F2F500079028C /* Products */,
@@ -113,6 +138,8 @@
 				4F1B58B41960865100AF87AB /* Transport */,
 				4F1B58B51960869500AF87AB /* Worker */,
 				4FDBB855196095F900ACB9AC /* Data */,
+				4FDBB85C1960A44C00ACB9AC /* VBucket */,
+				4FDBB8661960A4FA00ACB9AC /* Status */,
 			);
 			path = defer.io;
 			sourceTree = "<group>";
@@ -122,8 +149,36 @@
 			children = (
 				4FDBB8561960961A00ACB9AC /* Datum.cpp */,
 				4FDBB8571960961A00ACB9AC /* Datum.h */,
+				4FF1B41B1961C33400F50B64 /* JSON.cpp */,
+				4FF1B41C1961C33400F50B64 /* JSON.h */,
 			);
 			path = Data;
+			sourceTree = "<group>";
+		};
+		4FDBB85C1960A44C00ACB9AC /* VBucket */ = {
+			isa = PBXGroup;
+			children = (
+				4FBD4FF319626975001F9784 /* xxhash.c */,
+				4FBD4FF419626975001F9784 /* xxhash.h */,
+				4FDBB85D1960A49200ACB9AC /* VBucket.cpp */,
+				4FDBB85E1960A49200ACB9AC /* VBucket.h */,
+				4FDBB8601960A4BB00ACB9AC /* VBucketMap.cpp */,
+				4FDBB8611960A4BB00ACB9AC /* VBucketMap.h */,
+				4FDBB8631960A4E100ACB9AC /* Balancer.cpp */,
+				4FDBB8641960A4E100ACB9AC /* Balancer.h */,
+			);
+			path = VBucket;
+			sourceTree = "<group>";
+		};
+		4FDBB8661960A4FA00ACB9AC /* Status */ = {
+			isa = PBXGroup;
+			children = (
+				4FDBB8671960A51800ACB9AC /* Config.cpp */,
+				4FDBB8681960A51800ACB9AC /* Config.h */,
+				4FDBB86A1960A54000ACB9AC /* HealthChecker.cpp */,
+				4FDBB86B1960A54000ACB9AC /* HealthChecker.h */,
+			);
+			path = Status;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -176,13 +231,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4FDBB8651960A4E100ACB9AC /* Balancer.cpp in Sources */,
 				4F374540195F31100079028C /* Server.cpp in Sources */,
+				4FDBB8621960A4BB00ACB9AC /* VBucketMap.cpp in Sources */,
 				4F1B58AC195F33FE00AF87AB /* ThreadPool.cpp in Sources */,
 				4FDBB8581960961A00ACB9AC /* Datum.cpp in Sources */,
 				4F1B58AF19604F4B00AF87AB /* Client.cpp in Sources */,
 				4FDBB85319608D1500ACB9AC /* Job.cpp in Sources */,
 				4F374531195F2F500079028C /* main.cpp in Sources */,
+				4FDBB86C1960A54000ACB9AC /* HealthChecker.cpp in Sources */,
+				4FF1B41D1961C33400F50B64 /* JSON.cpp in Sources */,
+				4FDBB8691960A51800ACB9AC /* Config.cpp in Sources */,
+				4FBD4FF519626975001F9784 /* xxhash.c in Sources */,
 				4F1B58A6195F324600AF87AB /* Thread.cpp in Sources */,
+				4FDBB85F1960A49200ACB9AC /* VBucket.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -265,11 +327,11 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					/usr/local/include,
+					/opt/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					/usr/local/Cellar/libev/4.15/lib,
+					/opt/local/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -281,11 +343,11 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/include,
-					/usr/local/include,
+					/opt/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					/usr/local/Cellar/libev/4.15/lib,
+					/opt/local/lib,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

@@ -10,7 +10,7 @@
 #include "Job.h"
 #include "Server.h"
 
-Thread::Thread( int _seq ):status(0), seq(_seq)
+Thread::Thread( const int _seq ):thread(), status(0), seq(_seq)
 {
 	if ( pthread_create( &thread, NULL, virtual_proc, this ) != 0 )
 	{

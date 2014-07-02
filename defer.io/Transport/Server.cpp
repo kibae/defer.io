@@ -11,10 +11,9 @@
 
 ev::async				Server::aio;
 pthread_mutex_t			Server::_lock = PTHREAD_MUTEX_INITIALIZER;
-ev::default_loop		Server::loop;
 std::queue<Job *>		Server::finishedJobs;
 
-Server::Server( short port ): port(port), sock(0)
+Server::Server( short _port, ev::loop_ref _loop ): io(), port(_port), sock(0), loop(_loop)
 {
 	struct sockaddr_in addr;
 
@@ -61,15 +60,9 @@ int Server::start()
 	io.set( loop );
 	io.start( sock, ev::READ );
 
-	sio.set<&Server::signal_cb>();
-	sio.set( loop );
-	sio.start( SIGINT );
-
 	aio.set<&Server::aio_cb>();
 	aio.set( loop );
 	aio.start();
-
-	loop.run();
 
 	return 0;
 }
@@ -77,7 +70,6 @@ int Server::start()
 void Server::end()
 {
 	io.stop();
-	sio.stop();
 	aio.stop();
 }
 
@@ -89,11 +81,6 @@ void Server::jobFinish( Job *job )
 	finishedJobs.push( job );
 	aio.send();
 	unlock();
-}
-
-void Server::signal_cb( ev::sig &signal, int revents )
-{
-	loop.break_loop();
 }
 
 void Server::aio_cb( ev::async &watcher, int revents )

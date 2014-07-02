@@ -21,18 +21,17 @@
 class Server
 {
 private:
-	ev::io					io;
-	ev::sig					sio;
+	ev::io						io;
 
-	int						port;
-	int						sock;
+	int							port;
+	int							sock;
 	static std::queue<Job *>	finishedJobs;
 public:
-	static ev::default_loop	loop;
-	static pthread_mutex_t	_lock;
-	static ev::async		aio;
+	ev::loop_ref				loop;
+	static pthread_mutex_t		_lock;
+	static ev::async			aio;
 
-	Server( short port );
+	Server( short port, ev::loop_ref loop );
 
 	void accept_cb( ev::io &watcher, int revents );
 	int start();
@@ -45,8 +44,6 @@ public:
 	static inline void unlock() {
 		pthread_mutex_unlock( &_lock );
 	}
-
-	static void signal_cb( ev::sig &signal, int revents );
 
 	static void jobFinish( Job *job );
 	static void aio_cb( ev::async &watcher, int revents );

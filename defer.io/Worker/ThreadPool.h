@@ -27,7 +27,7 @@ private:
 	static std::queue<Job *>	jobs;
 public:
 	static bool terminate;
-	static int make( long poolSize );
+	static int make( const long poolSize );
 
 	static inline void lock() {
 		pthread_mutex_lock( &_lock );

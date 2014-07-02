@@ -26,7 +26,7 @@ private:
 public:
 	static void *virtual_proc( void *arg );
 
-	Thread( int _seq );
+	Thread( const int seq );
 
 	void *proc();
 };

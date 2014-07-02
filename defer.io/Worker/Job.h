@@ -17,7 +17,7 @@ class Job;
 class Job
 {
 public:
-	Job( char *buf );
+	Job( const char *buf );
 
 	typedef enum OPER_TYPE {
 		OPER_GET = 'G',
@@ -30,8 +30,8 @@ public:
 	{
 		char			oper;
 		uint32_t		apikey;
-		uint8_t			keyLen;
-		uint32_t		dataLen;
+		uint16_t		keyLen;		//max: 16KB
+		uint32_t		dataLen;	//max: 16MB
 	} __attribute__((packed));
 
 	Header				header;
@@ -42,7 +42,7 @@ public:
 
 	std::string			result;
 
-	static Job *parse( std::string *buf, ssize_t *buf_off );
+	static Job *parse( const std::string &buf, ssize_t *buf_off );
 
 	void dump();
 };
