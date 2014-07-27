@@ -12,14 +12,14 @@ Job::Job( const char *buf ): header({0,}), key(), data(), client(NULL), result()
 {
 	memcpy( &header, buf, sizeof(Header) );
 	if ( header.keyLen > 0 )
-		key.append( &(buf[sizeof(header)]), header.keyLen );
+		key.set( &(buf[sizeof(header)]), header.keyLen );
 	if ( header.dataLen > 0 )
 		data.append( &(buf[sizeof(header)+header.keyLen]), header.dataLen );
 }
 
 #define KEY_MAX_LEN	(1024*16)	//16KB
 #define DATA_MAX_LEN	(1024*1024*16)	//16MB
-Job *Job::parse( const std::string &buf, ssize_t *buf_off )
+Job *Job::parse( const std::string &buf, size_t *buf_off )
 {
 	const char	*data = &((buf)[*buf_off]);
 	Header		*header = (Header *) data;
@@ -43,6 +43,6 @@ Job *Job::parse( const std::string &buf, ssize_t *buf_off )
 
 void Job::dump()
 {
-	std::cout << "key: " << key << "\n";
+	std::cout << "key: " << key.str() << "\n";
 	std::cout << "data: " << data << "\n";
 }

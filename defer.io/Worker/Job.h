@@ -13,6 +13,7 @@
 
 class Job;
 #include "Client.h"
+#include "Key.h"
 
 class Job
 {
@@ -20,10 +21,9 @@ public:
 	Job( const char *buf );
 
 	typedef enum OPER_TYPE {
-		OPER_GET = 'G',
-		OPER_SET = 'S',
-		OPER_REPLACE = 'R',
-		OPER_DELETE = 'D',
+		OPER_EXECUTE = 'E',		//response object
+		OPER_THROW = 'P',		//response only status/error
+		OPER_BATCH = 'B',		//response only status/error
 	} OPER_TYPE;
 
 	struct Header
@@ -35,14 +35,14 @@ public:
 	} __attribute__((packed));
 
 	Header				header;
-	std::string			key;
+	Key					key;
 	std::string			data;
 
 	Client				*client;
 
 	std::string			result;
 
-	static Job *parse( const std::string &buf, ssize_t *buf_off );
+	static Job *parse( const std::string &buf, size_t *buf_off );
 
 	void dump();
 };

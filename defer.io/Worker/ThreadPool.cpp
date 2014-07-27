@@ -9,8 +9,7 @@
 #include "ThreadPool.h"
 
 bool ThreadPool::terminate = false;
-Thread **ThreadPool::pool = NULL;
-long ThreadPool::poolSize = 0;
+std::vector<Thread>	ThreadPool::pool;
 std::queue<Job *> ThreadPool::jobs;
 
 pthread_cond_t ThreadPool::_cond = PTHREAD_COND_INITIALIZER;
@@ -18,11 +17,9 @@ pthread_mutex_t ThreadPool::_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int ThreadPool::make( const long poolSize )
 {
-	pool = (Thread **) malloc( sizeof(Thread *) * poolSize );
-	ThreadPool::poolSize = poolSize;
 	for ( int i=0; i < poolSize; i++ )
 	{
-		pool[i] = new Thread( i );
+		pool.push_back( Thread(i) );
 		usleep( 1000 );
 	}
 
@@ -65,7 +62,4 @@ Job *ThreadPool::shift()
 
 void ThreadPool::finish()
 {
-	lock();
-	poolSize--;
-	unlock();
 }

@@ -14,6 +14,8 @@ Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), connected(true), re
 {
 	fcntl( sock, F_SETFL, fcntl( sock, F_GETFL, 0 ) | O_NONBLOCK );
 
+	rbuf.resize( 1024 );
+
 	rio.set<Client, &Client::read_cb>(this);
 	rio.set( loop );
 	rio.start( sock, ev::READ );

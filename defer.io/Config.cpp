@@ -24,10 +24,27 @@ Config::Config( ev::loop_ref _loop, int argc, const char *argv[] ): sio_int(), s
 	sio_usr1.set<Config, &Config::signal_usr1>(this);
 	sio_usr1.set( loop );
 	sio_usr1.start( SIGUSR1 );
-	
+
 	//TODO: parse
 	values.insert( valueRow("port", "7654") );
-	
+	values.insert( valueRow("datadir", "/tmp/deferio") );
+
+	struct rlimit	limit;
+	if ( getrlimit( RLIMIT_NOFILE, &limit ) != 0 )
+	{
+		std::stringstream e;
+		e << "getrlimit() failed with errno(" << errno << ") " << strerror(errno) << "\n";
+		throw std::logic_error( e.str() );
+	}
+
+	limit.rlim_cur = 1024;
+	if ( setrlimit( RLIMIT_NOFILE, &limit ) != 0 )
+	{
+		std::stringstream e;
+		e << "setrlimit() failed with errno(" << errno << ") " << strerror(errno) << "\n";
+		throw std::logic_error( e.str() );
+	}
+
 	Config::lastInstance = this;
 }
 

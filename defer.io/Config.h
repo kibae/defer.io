@@ -9,7 +9,7 @@
 #ifndef __defer_io__Config__
 #define __defer_io__Config__
 
-#include "../include.h"
+#include "include.h"
 #include <unordered_map>
 
 #include <ev++.h>
@@ -17,6 +17,9 @@
 class Config
 {
 private:
+	const static uint32_t	LIMIT_NOFILE = (1024*4);
+
+
 	static Config			*lastInstance;
 	
 	ev::sig					sio_int;
@@ -26,6 +29,10 @@ private:
 	static int				argc;
 	static const char		**argv;
 public:
+	//const
+	const static long		DEF_CACHE_COUNT_LIMIT = (1024);
+
+
 	Config( ev::loop_ref loop, int argc, const char *argv[] );
 	~Config();
 

@@ -10,30 +10,13 @@
 #include "Job.h"
 #include "Server.h"
 
-Thread::Thread( const int _seq ):thread(), status(0), seq(_seq)
+Thread::Thread( const int _seq ): status(0), seq(_seq), thread(&Thread::proc, this)
 {
-	if ( pthread_create( &thread, NULL, virtual_proc, this ) != 0 )
-	{
-		throw std::runtime_error( strerror(errno) );
-		return;
-	}
-
-	pthread_detach( thread );
 }
 
-void *Thread::virtual_proc( void *arg )
+void Thread::proc() const
 {
-	Thread *thread = (Thread *) arg;
-	thread->proc();
-
-	delete thread;
-
-	return NULL;
-}
-
-void *Thread::proc()
-{
-	std::cout << seq << " thread start " << thread << " " << this << "\n";
+	std::cout << seq << " thread start " << this << "\n";
 
 	Job *job = NULL;
 	while ( !ThreadPool::terminate )
@@ -54,6 +37,4 @@ void *Thread::proc()
 
 	std::cout << seq << " thread end\n";
 	ThreadPool::finish();
-
-	return NULL;
 }

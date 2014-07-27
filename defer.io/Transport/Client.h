@@ -27,11 +27,11 @@ private:
 
 	ev::io				rio;
 	std::string			rbuf;
-	ssize_t				rbuf_off;
+	size_t				rbuf_off;
 
 	ev::io				wio;
 	std::string			wbuf;
-	ssize_t				wbuf_off;
+	size_t				wbuf_off;
 public:
 	Client( int sock, ev::loop_ref loop );
 

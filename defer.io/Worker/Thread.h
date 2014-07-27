@@ -10,6 +10,7 @@
 #define __defer_io__Thread__
 
 #include "../include.h"
+#include <thread>
 
 class Thread;
 
@@ -20,15 +21,13 @@ class Thread
 private:
 	static bool				_destroy;
 
-	pthread_t				thread;
 	int						status;
 	int						seq;
+	std::thread				thread;
 public:
-	static void *virtual_proc( void *arg );
-
 	Thread( const int seq );
 
-	void *proc();
+	void proc() const;
 };
 
 #endif /* defined(__defer_io__Thread__) */

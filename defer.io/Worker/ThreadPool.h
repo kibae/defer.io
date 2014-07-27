@@ -11,6 +11,7 @@
 
 #include "../include.h"
 #include <queue>
+#include <vector>
 
 #include "Thread.h"
 #include "Job.h"
@@ -18,8 +19,7 @@
 class ThreadPool
 {
 private:
-	static Thread				**pool;
-	static long					poolSize;
+	static std::vector<Thread>	pool;
 
 	static pthread_cond_t		_cond;
 	static pthread_mutex_t		_lock;
