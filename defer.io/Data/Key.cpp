@@ -39,6 +39,11 @@ void Key::validation()
 		throw std::length_error( "Key cannot contains these characters: \".[]\"" );
 }
 
+void Key::free()
+{
+	this->clear();
+}
+
 std::string Key::str() const
 {
 	return *this;
@@ -64,6 +69,11 @@ uint8_t Key::lockKey() const
 	if ( !hashCalc )
 		calcHash();
 	return _lockKey;
+}
+
+uint8_t Key::cacheKey() const
+{
+	return lockKey();
 }
 
 uint16_t Key::bucketID() const

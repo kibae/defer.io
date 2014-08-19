@@ -28,12 +28,14 @@ public:
 	void set( const std::string& );
 
 	void validation();
+	void free();
 
 	std::string str() const;
 
 	void calcHash() const;
 	uint32_t hash() const;
 	uint8_t lockKey() const;
+	uint8_t cacheKey() const;
 	uint16_t bucketID() const;
 	void rlock() const;
 	void wlock() const;

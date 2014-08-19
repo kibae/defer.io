@@ -8,83 +8,48 @@
 
 #include "JSON.h"
 
-const JSON	JSON::Null;
-const JSON	JSON::True(true);
-const JSON	JSON::False(false);
+ssize_t JSONMem::used = 0;
+pthread_mutex_t	JSONMem::_lock = PTHREAD_MUTEX_INITIALIZER;
+const JSONVal JSON::Null;
 
+void JSONMem::retain( ssize_t sz )
+{
+	lock();
+	used += sz;
+	unlock();
+}
 
-JSON::JSON(): reader(), writer()
+void JSONMem::release( ssize_t sz )
+{
+	lock();
+	used -= sz;
+	unlock();
+}
+
+ssize_t JSONMem::size()
+{
+	return used;
+}
+
+JSONDoc::JSONDoc(): allocator(2*1024), rapidjson::Document( &allocator )
 {
 }
 
-JSON::JSON( Json::ValueType t ): Json::Value(t), reader(), writer()
+JSONDoc::~JSONDoc()
 {
+	JSONMem::release( allocator.Capacity() );
+	allocator.Clear();
 }
 
-JSON::JSON( const Json::Value& o ): Json::Value(o), reader(), writer()
+bool JSON::parse( const std::string &buf, JSONDoc &doc )
 {
+	return doc.Parse( buf.c_str() ).HasParseError();
 }
 
-JSON::JSON( Int v ): Json::Value(v), reader(), writer()
+std::string JSON::stringify( JSONVal &v )
 {
-}
-
-JSON::JSON( UInt v ): Json::Value(v), reader(), writer()
-{
-}
-
-JSON::JSON( Int64 v ): Json::Value(v), reader(), writer()
-{
-}
-
-JSON::JSON( UInt64 v ): Json::Value(v), reader(), writer()
-{
-}
-
-JSON::JSON( double v ): Json::Value(v), reader(), writer()
-{
-}
-
-JSON::JSON( bool v ): Json::Value(v), reader(), writer()
-{
-}
-
-JSON::JSON( const std::string &buf ): reader(), writer()
-{
-	parse( buf );
-}
-
-
-void JSON::parse( const std::string &buf )
-{
-	if ( buf.length() > 0 && !reader.parse( buf, *this, false ) )
-	{
-		throw new std::logic_error( reader.getFormattedErrorMessages() );
-		return;
-	}
-}
-
-std::string JSON::toString() const
-{
-	return writer.write( *this );
-}
-
-std::string JSON::toString()
-{
-	return writer.write( *this );
-}
-
-JSON *JSON::fromString( const std::string &buf )
-{
-	JSON *obj = NULL;
-	try
-	{
-		obj = new JSON( buf );
-	}
-	catch ( const std::logic_error& e )
-	{
-		DEBUGS(e.what())
-	}
-
-	return obj;
+	rapidjson::StringBuffer buf;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buf);
+	v.Accept( writer );
+	return buf.GetString();
 }

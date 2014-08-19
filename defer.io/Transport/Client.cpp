@@ -10,11 +10,11 @@
 #include "Job.h"
 #include "ThreadPool.h"
 
-Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), connected(true), requested(0), working(0), rio(), rbuf(), rbuf_off(0), wio(), wbuf(), wbuf_off(0)
+Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), connected(true), authorized(0), requested(0), working(0), rio(), rbuf(), rbuf_off(0), wio(), wbuf(), wbuf_off(0)
 {
 	fcntl( sock, F_SETFL, fcntl( sock, F_GETFL, 0 ) | O_NONBLOCK );
 
-	rbuf.resize( 1024 );
+	rbuf.reserve( 1024 );
 
 	rio.set<Client, &Client::read_cb>(this);
 	rio.set( loop );
@@ -73,7 +73,7 @@ void Client::read_cb( ev::io &watcher, int revents )
 	}
 
 	rbuf.append(buf, res);
-	if ( rbuf.length()-rbuf_off > sizeof(Job::Header) )
+	if ( rbuf.length()-rbuf_off >= sizeof(Job::Header) )
 	{
 		try
 		{
@@ -83,6 +83,7 @@ void Client::read_cb( ev::io &watcher, int revents )
 				working++;
 				job->client = this;
 				ThreadPool::push( job );
+
 				job = Job::parse( rbuf, &rbuf_off );
 			}
 
@@ -101,34 +102,20 @@ void Client::read_cb( ev::io &watcher, int revents )
 
 void Client::jobFinish( Job *job )
 {
-	if ( working > 0 )
-		working--;
-	if ( !connected )
-	{
-		return finalize();
-	}
-
-	wbuf.append( job->result );
-	if ( !wio.is_active() )
-	{
-		wio.start();
-	}
+	jobFinish( job->result );
+	delete job;
 }
 
-void Client::jobFinish( std::string *buf )
+void Client::jobFinish( std::string &buf )
 {
 	if ( working > 0 )
 		working--;
 	if ( !connected )
-	{
 		return finalize();
-	}
 
-	wbuf.append( buf->c_str(), buf->length() );
+	wbuf.append( buf );
 	if ( !wio.is_active() )
-	{
 		wio.start();
-	}
 }
 
 void Client::writeFinish()

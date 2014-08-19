@@ -8,25 +8,29 @@
 
 #include "Cache.h"
 
-uint64_t Cache::seq = 0;
-std::unordered_map<std::string, Cache::LRU::Entry*> Cache::data;
+std::vector<Cache*>		Cache::pool;
+unsigned long			Cache::countLimit = Config::DEF_CACHE_COUNT_LIMIT;
+unsigned long			Cache::perCountLimit = ceil( ((double) Config::DEF_CACHE_COUNT_LIMIT)/((double) Key::lockSize) );
 
-pthread_rwlock_t	Cache::_lock = PTHREAD_RWLOCK_INITIALIZER;
-unsigned long		Cache::countLimit = Config::DEF_CACHE_COUNT_LIMIT;
-
-Cache::LRU::Entry		*Cache::LRU::head = NULL;
-Cache::LRU::Entry		*Cache::LRU::tail = NULL;
-
-
-void Cache::setCountLimit( long cnt )
+void Cache::init( long cnt )
 {
 	Cache::countLimit = cnt;
+	Cache::perCountLimit = ceil( ((double) cnt)/((double) Key::lockSize) );
+
+	for ( uint8_t i=0; i < Key::lockSize; i++ )
+	{
+		pool.push_back( new Cache() );
+	}
+}
+
+Cache::Cache(): _changed(0), _lastChanged(0), seq(0)
+{
 }
 
 bool Cache::exists( const Key &key )
 {
 	rlock();
-	std::unordered_map<std::string, LRU::Entry*>::const_iterator got = data.find( key.str() );
+	std::unordered_map<std::string, Document*>::const_iterator got = data.find( key.str() );
 	bool exists = got != data.end();
 	unlock();
 
@@ -35,132 +39,140 @@ bool Cache::exists( const Key &key )
 
 void Cache::push( const Key &key, Document *datum, bool ignoreExists )
 {
-	LRU::Entry	*entry = NULL;
-
 	wlock();
-	entry = data[key.str()];
-	if ( entry )
+	Document *check = data[key.str()];
+	if ( check != NULL )
 	{
 		if ( ignoreExists )
 		{
-			if ( entry->val )
-				entry->val->destroy();
-			entry->val = datum;
+			LLOG
+			delete check;
+			//check->destroy();
 		}
 		else
 			throw std::runtime_error( "Data is current exists." );
 	}
-	else
-	{
-		entry = data[key.str()] = new LRU::Entry( datum );
-	}
+	data[key.str()] = datum;
 	seq++;
 
-	LRU::insertBeginning( entry );
-	if ( data.size() > Cache::countLimit )
+	list.push_front( datum );
+	if ( data.size() > Cache::perCountLimit )
 	{
-		LRU::Entry *oldest = LRU::tail;
-		if ( oldest )
+		Document *oldest = list.back();
+		if ( oldest != NULL )
 		{
-			LRU::remove( oldest );
-			if ( oldest->val )
-			{
-				oldest->val->save();
-				remove( oldest->val->getKey(), true );
-			}
+			list.pop_back();
+
+			oldest->save();
+			data.erase( oldest->getKey().str() );
+			delete oldest;
 		}
 	}
 	unlock();
 }
 
-void Cache::remove( const Key &key, bool noLock )
+Document *Cache::getCache( const Key &key )
 {
-	if ( !noLock ) wlock();
-
-	LRU::Entry	*entry = data[key.str()];
-	if ( !entry )
-	{
-		if ( !noLock ) unlock();
-		return;
-	}
-
-	if ( entry->val )
-		entry->val->destroy();
-	data.erase( key.str() );
-
-	seq++;
-	if ( !noLock ) unlock();
-
-	delete entry;
+	Cache *pool = getCachePool( key.cacheKey() );
+	if ( pool == NULL )
+		return NULL;
+	return pool->get( key );
 }
 
 Document *Cache::get( const Key &key )
 {
-	rlock();
-	LRU::Entry *entry = data[key.str()];
-	Document *doc = entry && entry->val ? entry->val : NULL;
+	wlock();
+	Document *doc = data[key.str()];
+	if ( doc && list.front() != doc )
+	{
+		std::list<Document*>::iterator it = std::find( list.begin(), list.end(), doc );
+		list.erase( it );
+		list.push_front( doc );
+	}
 	unlock();
 
 	return doc;
 }
 
-void Cache::LRU::insertAfter( Cache::LRU::Entry *node, Cache::LRU::Entry *newNode )
+void Cache::sync()
 {
-	newNode->prev = node;
-	newNode->next = node->next;
-	if ( node->next == NULL )
-		tail = newNode;
-	else
+	//TODO: sync
+	return;
+	/*
+	if ( data.size() <= 0 ) return;
+
+	//bg save
+	int i = (int) ((float) Cache::countLimit / 10.0f);
+
+	rlock();
+	std::unordered_map<std::string, LRU::Entry*>::iterator it = data.begin();
+	if ( data.size() > i )
 	{
-		node->next->prev = newNode;
-		node->next = newNode;
+		//std::advance( it, (abs((int) random())%data.size()) - i );
+	}
+
+	for ( int z = 0; it != data.end(); ++it, z++ )
+	{
+		//DEBUGS(z)
+		if ( it->second != NULL || it->second->val == NULL || !it->second->val->changed() )
+			continue;
+		i--;
+		DEBUGS(it->first)
+		it->second->val->save();
+	}
+	unlock();
+	 */
+}
+
+void Cache::flush()
+{
+	wlock();
+	while ( list.size() > 0 )
+	{
+		Document *doc = list.back();
+		if ( doc->changed() )
+			doc->save();
+		list.pop_back();
+		doc->wlock();
+		doc->unlock();
+		delete doc;
+	}
+	list.clear();
+	data.clear();
+	seq++;
+	unlock();
+}
+
+void Cache::changed()
+{
+	_changed++;
+}
+
+
+void Cache::syncAll()
+{
+	for ( uint8_t i=0; i < Key::lockSize; i++ )
+	{
+		//std::cout << (int)i << "	" << pool[i]->data.size() << "\n";
+		pool[i]->sync();
 	}
 }
 
-void Cache::LRU::insertBefore( Cache::LRU::Entry *node, Cache::LRU::Entry *newNode )
+void Cache::flushAll()
 {
-	newNode->prev = node->prev;
-	newNode->next = node;
-	if ( node->prev == NULL )
-		head = newNode;
-	else
+	for ( uint8_t i=0; i < Key::lockSize; i++ )
 	{
-		node->prev->next = newNode;
-		node->prev = newNode;
+		pool[i]->flush();
 	}
-
 }
 
-void Cache::LRU::insertBeginning( Cache::LRU::Entry *newNode )
+Cache *Cache::getCachePool( const uint8_t idx )
 {
-	if ( head == NULL )
-	{
-		head = tail = newNode;
-		newNode->prev = newNode->next = NULL;
-	}
-	else
-		insertBefore( head, newNode );
-
+	return pool[idx];
 }
 
-void Cache::LRU::insertEnd( Cache::LRU::Entry *newNode )
+Cache *Cache::getCachePool( const Key &key )
 {
-	if ( tail == NULL )
-		insertBeginning( newNode );
-	else
-		insertAfter( tail, newNode );
-
+	return pool[key.cacheKey()];
 }
 
-void Cache::LRU::remove( Cache::LRU::Entry *node )
-{
-	if ( node->prev == NULL )
-		head = node->next;
-	else
-		node->prev->next = node->next;
-
-	if ( node->next == NULL )
-		tail = node->prev;
-	else
-		node->next->prev = node->prev;
-}

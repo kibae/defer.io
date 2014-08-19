@@ -24,13 +24,9 @@ void Thread::proc() const
 		job = ThreadPool::shift();
 		if ( job != NULL )
 		{
-			//ThreadPool::lock(); LLOG job->dump(); ThreadPool::unlock();
+			job->execute();
 
-			//TODO:process
-
-			//job->result.append(job->data);
-
-			Server::jobFinish( job );
+			Job::finish( job );
 			job = NULL;
 		}
 	}

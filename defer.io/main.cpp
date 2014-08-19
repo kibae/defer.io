@@ -17,49 +17,57 @@
 
 #include "Key.h"
 #include "Document.h"
+#include "Job.h"
 
 
 void test()
 {
 	//return;
 
-	Document doc( Key("test"), "[{\"a\":[1,2,3]}]" );
-	DEBUGS( doc.out() );
-	DEBUGS( doc.execute( ".", Document::Set, std::string("[{\"a\":[1,2,3,4,5,6]}]") ).toString() );
-	DEBUGS( doc.out() );
-	doc.execute( ".", Document::ObjectSet, std::string("[\"b\", [4,5,6], \"d\", 10, null, 20, 20.0, 40.0, \"100\", 20.0, \"\", 100]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".", Document::ObjectDel, std::string("[\"b\"]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".a", Document::ArrayPush, std::string("[4,5,6,7,8,9]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".c", Document::ArrayPush, std::string("[14,5,6,7,8,9]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".a", Document::ArrayCut, std::string("[13]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".a", Document::ArrayCut, std::string("[10]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".a", Document::ArrayCut, std::string("[100, -5]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".b", Document::NumberIncr, std::string("") );
-	DEBUGS( doc.out() );
-	doc.execute( ".c[16]", Document::NumberIncr, std::string("[100]") );
-	DEBUGS( doc.out() );
-	doc.execute( ".c[14]", Document::NumberIncr, std::string("") );
-	DEBUGS( doc.out() );
-	doc.execute( ".c[13]", Document::Set, std::string("[\"aaa\"]") );
-	DEBUGS( doc.out() );
+	DEBUGS( Document::CMD::AUTH )
+	DEBUGS( Document::CMD::OBJECT_CMD )
+	DEBUGS( Document::CMD::Exists )
 
-	DEBUGS( doc.execute( ".", Document::ObjectKeys, std::string("[]") ).toString() );
-	DEBUGS( doc.execute( ".c", Document::ArrayCount, std::string("[]") ).toString() );
 
-	DEBUGS( doc.execute( ".c", Document::GetSet, std::string("[\"ccccc\"]") ).toString() );
-	DEBUGS( doc.out() );
+	Job *job = new Job( Document::CMD::Set, "test", "[[1,2,3]]" );
+	job->execute();
+	DEBUGS( job->result )
 
-	doc.execute( ".a", Document::ArraySplice, std::string("[2, 2, 1,2,3]") ).toString();
-	DEBUGS( doc.out() );
+	job = new Job( Document::CMD::ArrayCount, "test" );
+	job->execute();
+	DEBUGS( job->result )
 
-	exit(0);
+	job = new Job( Document::CMD::ArrayUnshift, "test", "[4,5,6]" );
+	job->execute();
+	DEBUGS( job->result )
+
+	job = new Job( Document::CMD::ArrayCount, "test" );
+	job->execute();
+	DEBUGS( job->result )
+
+	job = new Job( Document::CMD::ListPush, "test", "[8, 11,12,13]" );
+	job->execute();
+	DEBUGS( job->result )
+
+	job = new Job( Document::CMD::ArrayCount, "test" );
+	job->execute();
+	DEBUGS( job->result )
+
+	job = new Job( Document::CMD::ListPush, "test", "[7, 21,22,23,24,25,26,27,28]" );
+	job->execute();
+	DEBUGS( job->result )
+
+	job = new Job( Document::CMD::ListPush, "test", "[8, 21,22,23,24,25,26,27,28]" );
+	job->execute();
+	DEBUGS( job->result )
+
+	job = new Job( Document::CMD::ListPush, "test", "[9, 21,22,23,24,25,26,27,28]" );
+	job->execute();
+	DEBUGS( job->result )
+
+	job = new Job( Document::CMD::NumberIncr, "test[0]" );
+	job->execute();
+	DEBUGS( job->result )
 }
 
 Config		*config;
@@ -78,10 +86,10 @@ int main( int argc, const char * argv[] )
 	}
 
 	//Config setting
-	DB::init( config->values["datadir"] );
-	Cache::setCountLimit( config->numVal( "cache_size", Config::DEF_CACHE_COUNT_LIMIT ) );
+	DB::init( config->values["datadir"], config->numVal( "sync_request_interval", Config::DEF_SYNC_REQ_INTERVAL ) );
+	Cache::init( config->numVal( "cache_size", Config::DEF_CACHE_COUNT_LIMIT ) );
 
-	test();
+	//test();
 
 	short port = config->numVal( "port", 7654 );
 	long numCores = config->numVal( "worker_count", sysconf( _SC_NPROCESSORS_ONLN )*1.5 );

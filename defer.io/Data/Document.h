@@ -11,63 +11,77 @@
 
 #include "../include.h"
 
+class Document;
+
 #include "JSON.h"
 #include "DB.h"
 #include "Key.h"
+#include "Cache.h"
 
 #include <vector>
 
 class Document: public RWLock
 {
+public:
+	enum Status : uint16_t {
+		OK = 200,
+		NotFound = 404,
+		LogicError = 500,
+	};
+private:
 	Key				key;
-	JSON			content;
+	JSONDoc			content;
 
 	DB::VBucket		*bucket;
 
 	bool			_created;
-	bool			_destroyed;
 	bool			_changed;
 	uint64_t		_timeChanged;
 
 	std::string		_out;
 	uint64_t		_timeOutGenerated;
 
-	static std::vector<Document *> destroyPool;
+	Status get( JSONDoc&, JSONDoc& );
+	Status getOrCreate( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status set( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status getSet( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status setIfNotExists( JSONDoc&, JSONDoc&, JSONDoc& );
 
-	JSON get( const Json::Value& );
-	JSON set( Json::Value&, const JSON& );
-	JSON getSet( Json::Value&, const JSON& );
+	Status arrayPush( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arrayPop( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arrayUnshift( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arrayShift( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arraySplice( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arrayCut( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arraySlice( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arrayCount( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arrayRandGet( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status arrayRandPop( JSONDoc&, JSONDoc&, JSONDoc& );
 
-	JSON arrayPush( Json::Value&, const JSON& );
-	JSON arrayPop( Json::Value&, const JSON& );
-	JSON arrayUnshift( Json::Value&, const JSON& );
-	JSON arrayShift( Json::Value&, const JSON& );
-	JSON arraySplice( Json::Value&, const JSON& );
-	JSON arrayCut( Json::Value&, const JSON& );
-	JSON arraySlice( Json::Value&, const JSON& );
-	JSON arrayCount( Json::Value&, const JSON& );
+	void listUniqArg( JSONDoc&, JSONDoc&, JSONVal& );
+	Status listPush( JSONDoc&, JSONDoc&, JSONDoc&, bool checkUniq=false );
+	Status listUnshift( JSONDoc&, JSONDoc&, JSONDoc&, bool checkUniq=false );
 
-	JSON listPush( Json::Value&, const JSON&, bool checkUniq=false );
-	JSON listUnshift( Json::Value&, const JSON&, bool checkUniq=false );
-	JSON listUniqArg( Json::Value&, const JSON& );
+	Status objectSet( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status objectSetIfNotExists( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status objectDel( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status objectKeys( JSONDoc&, JSONDoc&, JSONDoc& );
 
-	JSON objectSet( Json::Value&, const JSON& );
-	JSON objectDel( Json::Value&, const JSON& );
-	JSON objectKeys( Json::Value&, const JSON& );
+	Status numberIncr( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status numberDecr( JSONDoc&, JSONDoc&, JSONDoc& );
 
-	JSON numberIncr( Json::Value&, const JSON& );
-	JSON numberDecr( Json::Value&, const JSON& );
+	Status stringAppend( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status stringPrepend( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status stringLength( JSONDoc&, JSONDoc&, JSONDoc& );
+	Status stringSub( JSONDoc&, JSONDoc&, JSONDoc& );
 
-	JSON stringAppend( Json::Value&, const JSON& );
-	JSON stringPrepend( Json::Value&, const JSON& );
-	JSON stringLength( Json::Value&, const JSON& );
-
-	JSON boolToggle( Json::Value&, const JSON& );
+	Status boolToggle( JSONDoc&, JSONDoc&, JSONDoc& );
 public:
 	Document( const Key & );
 	Document( const Key &, const std::string & );
 	Document( DB::VBucket *b, const Key & );
 	Document( DB::VBucket *b, const Key &, const std::string & );
+	~Document();
 
 	void setBucket( DB::VBucket *b );
 	void setData( const std::string &v );
@@ -75,22 +89,32 @@ public:
 	Key &getKey();
 
 	bool save();
-	void destroy();
 
 	bool changed();
 	void touch();
 	void created();
 
+	rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator> &allocator();
+
 	std::string out();
 
-	enum CMD {				//arg
-		Exists,
+	enum CMD : uint8_t {	//arg
+		AUTH = 10,
+		SYSTEM_CMD = 70,
+		FlushCache,
 
-		Set,				//[new value]
+		OBJECT_CMD = 90,	//char(d)
+		Sync = 91,
+
+		Exists = 100,		//getter
+
 		Get,				//getter
+		GetOrCreate,		//[default value]
+		Set,				//[new value]
 		GetSet,				//[new value]
+		SetIfNotExists,		//[new value]
 
-		ArrayPush,			//[value[, value, value, ...]]
+		ArrayPush = 120,	//[value[, value, value, ...]]
 		ArrayPop,			//
 		ArrayUnshift,		//[value[, value, value, ...]]
 		ArrayShift,			//
@@ -98,35 +122,44 @@ public:
 		ArrayCut,			//[size, off=0]
 		ArraySlice,			//[size, off=0], getter
 		ArrayCount,			//getter
-		//random get? random pop?
+		ArrayRandGet,		//getter
+		ArrayRandPop,		//
+		//sort? rsort?
 
-		ListPush,			//[list size, value[, value, ..]], cut left
+		ListPush = 140,		//[list size, value[, value, ..]], cut left
 		ListUnshift,		//[list size, value[, value, ..]], cut right
 		ListPushUniq,		//[list size, value[, value, ..]] only string/number, cut left
 		ListUnshiftUniq,	//[list size, value[, value, ..]] only string/number, cut right
 
-		ObjectSet,			//[key, value[, key, value, ..]]
+		ObjectSet = 160,	//[key, value[, key, value, ..]]
+		ObjectSetIfNotExists,	//[key, value[, key, value, ..]]
 		ObjectDel,			//[key[, key, ...]]
-		ObjectKeys,			//getter
+		ObjectKeys,			//[search], getter
 
-		NumberIncr,			//[incr_val]
+		NumberIncr = 180,	//[incr_val]
 		NumberDecr,			//[decr_val]
 
-		StringAppend,		//[right_str]
+		StringAppend = 200,	//[right_str]
 		StringPrepend,		//[left_str]
 		StringLength,		//getter
-		//search? replace? substr?
+		StringSub,			//[offset, len], getter
+		//search/match? replace?
 
-		BoolToggle,			//
+		BoolToggle = 220,	//
 	};
 
-	JSON execute( const std::string&, CMD, const std::string );
-	JSON execute( const std::string&, CMD, const JSON& );
-	JSON manipulate( Json::Value&, CMD, const JSON& );
+	Status execute( const std::string&, CMD, JSONDoc&, JSONDoc& );
+	Status manipulate( JSONDoc&, CMD, JSONDoc&, JSONDoc& );
 
-	static Document *get( const Key& );
 	static Document *getOrCreate( const Key& );
-	static Document *set( const Key&, const std::string& );
+
+	class Error : public std::runtime_error {
+		Status		_status;
+	public:
+		Error( const Status, const std::string& );
+		Error( const Status, const char* );
+		Status status() const;
+	};
 };
 
 #endif /* defined(__defer_io__Document__) */

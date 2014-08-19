@@ -56,6 +56,10 @@ public:
 
 		return (((uint64_t)now.tv_sec) * (uint64_t)1000000) + ((uint64_t)now.tv_usec);
 	}
+
+	static bool isInteger( double v ) {
+		return round(v) == v;
+	}
 };
 
 class RWLock

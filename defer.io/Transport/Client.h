@@ -22,6 +22,8 @@ private:
 	int					sock;
 	bool				connected;
 
+	bool				authorized;
+
 	uint32_t			requested;
 	uint32_t			working;
 
@@ -39,8 +41,8 @@ public:
 	void disconnect();
 	void finalize();
 
-	void jobFinish( std::string *buf );
-	void jobFinish( Job *job );
+	void jobFinish( Job* );
+	void jobFinish( std::string& );
 
 	void read_cb( ev::io &watcher, int revents );
 	void write_cb( ev::io &watcher, int revents );

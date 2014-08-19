@@ -9,24 +9,27 @@
 #include "Document.h"
 #include "Cache.h"
 
-std::vector<Document *> Document::destroyPool;
-
-Document::Document( const Key &k ): key(k), content(), bucket(NULL), _created(false), _destroyed(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::Document( const Key &k ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
 {
 }
 
-Document::Document( const Key &k, const std::string &v ): key(k), content(v), bucket(NULL), _created(false), _destroyed(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::Document( const Key &k, const std::string &v ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+{
+	setData( v );
+}
+
+Document::Document( DB::VBucket *b, const Key &k ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
 {
 }
 
-Document::Document( DB::VBucket *b, const Key &k ): key(k), content(), bucket(b), _created(false), _destroyed(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::Document( DB::VBucket *b, const Key &k, const std::string &v ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
 {
+	setData( v );
 }
 
-Document::Document( DB::VBucket *b, const Key &k, const std::string &v ): key(k), content(v), bucket(b), _created(false), _destroyed(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::~Document()
 {
 }
-
 
 
 
@@ -37,7 +40,7 @@ void Document::setBucket( DB::VBucket *b )
 
 void Document::setData( const std::string &v )
 {
-	content.parse(v);
+	JSON::parse( v, content );
 }
 
 Key &Document::getKey()
@@ -62,14 +65,6 @@ bool Document::save()
 	return true;
 }
 
-void Document::destroy()
-{
-	_changed = false;
-	_destroyed = true;
-	_timeChanged = Util::microtime();
-	destroyPool.push_back( this );
-}
-
 bool Document::changed()
 {
 	return _changed;
@@ -77,9 +72,11 @@ bool Document::changed()
 
 void Document::touch()
 {
-	if ( _destroyed )
-		throw std::runtime_error( "This document instance has been destroyed." );
-	_changed = true;
+	if ( !_changed )
+	{
+		_changed = true;
+		DB::changed();
+	}
 	_timeChanged = Util::microtime();
 }
 
@@ -88,122 +85,80 @@ void Document::created()
 	_created = true;
 }
 
+rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator> &Document::allocator()
+{
+	return content.allocator;
+}
+
 std::string Document::out()
 {
 	if ( _timeOutGenerated == 0 || _timeOutGenerated < _timeChanged )
 	{
-		_out = content.toString();
+		_out.assign( JSON::stringify( content ) );
 		_timeOutGenerated = Util::microtime();
 	}
 	return _out;
 }
 
-Document *Document::get( const Key &k )
+Document *Document::getOrCreate( const Key &k )
 {
-	uint64_t	seq = Cache::seq;
+	Cache		*cache = Cache::getCachePool( k );
+	uint64_t	seq = cache->seq;
 
-	Document *doc = Cache::get( k );
+	k.wlock();
+	Document *doc = cache->get( k );
 	if ( doc != NULL )
-		return doc;
-	
-	DB::VBucket		*bucket = DB::getBucket( k );
-	if ( bucket == NULL )
-		return NULL;
-
-	std::string	v;
-
-	k.rlock();
-	if ( seq != Cache::seq )
 	{
-		//check cache again
-		doc = Cache::get( k );
-		if ( doc != NULL )
-		{
-			k.unlock();
-			return doc;
-		}
+		doc->wlock();
+		k.unlock();
+		return doc;
 	}
 
-	bool res = bucket->get( k, &v );
-	if ( !res )
+	DB::VBucket	*bucket = DB::getBucket( k );
+	if ( bucket == NULL )
 	{
 		k.unlock();
 		return NULL;
 	}
 
-	doc = new Document( bucket, k, v );
-	Cache::push( k, doc );
-
-	k.unlock();
-
-	return doc;
-}
-
-Document *Document::getOrCreate( const Key &k )
-{
-	uint64_t	seq = Cache::seq;
-
-	Document *doc = Cache::get( k );
-	if ( doc != NULL )
-		return doc;
-
-	DB::VBucket		*bucket = DB::getBucket( k );
-	if ( bucket == NULL )
-		return NULL;
-
 	std::string	v;
-
-	k.wlock();
-	if ( seq != Cache::seq )
+	if ( seq != cache->seq )
 	{
 		//check cache again
-		doc = Cache::get( k );
+		doc = cache->get( k );
 		if ( doc != NULL )
 		{
+			doc->wlock();
 			k.unlock();
 			return doc;
 		}
 	}
 
-	bool res = bucket->get( k, &v );
+	bool res = false;
+	try
+	{
+		res = bucket->get( k, &v );
+	}
+	catch ( const std::logic_error &le )
+	{
+		//TODO: log
+		k.unlock();
+		return NULL;
+	}
+
 	if ( res )
+	{
 		doc = new Document( bucket, k, v );
+	}
 	else
 	{
 		//create
 		doc = new Document( bucket, k );
 		doc->created();
 	}
-	Cache::push( k, doc );
+	cache->push( k, doc );
 
-	k.unlock();
-
-	return doc;
-}
-
-Document *Document::set( const Key &k, const std::string &v )
-{
-	k.wlock();
-	Document *doc = Cache::get( k );
-	if ( doc != NULL )
-	{
-		doc->setData( v );
-		doc->touch();
-		k.unlock();
-		return doc;
-	}
-
-	DB::VBucket		*bucket = DB::getBucket( k );
-	if ( bucket == NULL )
-	{
-		k.unlock();
-		return NULL;
-	}
-
-	doc = new Document( bucket, k, v );
-	doc->touch();
-	Cache::push( k, doc );
-
+	doc->wlock();
 	k.unlock();
 
 	return doc;
@@ -213,11 +168,14 @@ inline bool isReadonlyCmd( Document::CMD cmd )
 {
 	switch ( cmd )
 	{
+		case Document::Sync:
 		case Document::Exists:
 		case Document::Get:
 		case Document::ArraySlice:
 		case Document::ArrayCount:
+		case Document::ArrayRandGet:
 		case Document::StringLength:
+		case Document::StringSub:
 		case Document::ObjectKeys:
 			return true;
 
@@ -227,21 +185,53 @@ inline bool isReadonlyCmd( Document::CMD cmd )
 	}
 }
 
-JSON Document::execute( const std::string &expr, CMD cmd, const std::string arg )
+inline bool isNeedParentSetterCmd( Document::CMD cmd )
 {
-	return execute( expr, cmd, JSON(arg) );
+	switch ( cmd )
+	{
+		case Document::Set:
+		case Document::GetSet:
+		case Document::ArrayPush:
+		case Document::ArrayUnshift:
+		case Document::ArraySplice:
+		case Document::ListPush:
+		case Document::ListUnshift:
+		case Document::ListPushUniq:
+		case Document::ListUnshiftUniq:
+		case Document::ObjectSet:
+		case Document::NumberIncr:
+		case Document::NumberDecr:
+		case Document::StringAppend:
+		case Document::StringPrepend:
+		case Document::BoolToggle:
+			return true;
+			break;
+
+		default:
+			return false;
+			break;
+	}
 }
 
-JSON Document::execute( const std::string &expr, CMD cmd, const JSON &arg )
+Document::Status Document::execute( const std::string &expr, CMD cmd, JSONDoc &arg, JSONDoc &res )
 {
 	if ( expr == "." )
-		return manipulate( content, cmd, arg );
+		return manipulate( content, cmd, arg, res );
 
+	//TODO: subpath
+	/*
 	Json::Path	path( expr );
 	if ( path.resolve(content).isNull() )
 	{
 		if ( isReadonlyCmd(cmd) )
 			return cmd == CMD::Exists ? JSON::False : JSON::Null;
+
+		if ( !isNeedParentSetterCmd(cmd) )
+		{
+			if ( cmd == ArrayCount || cmd == StringLength )
+				return JSON(0);
+			return JSON::Null;
+		}
 
 		std::string tmp(expr);
 		ssize_t offO = tmp.rfind( "." );
@@ -266,16 +256,16 @@ JSON Document::execute( const std::string &expr, CMD cmd, const JSON &arg )
 				}
 
 				if ( parent == NULL || !parent->isObject() )
-					throw std::runtime_error( "The root is not a object." );
+					throw Error( 500, "The root is not a object." );
 
 				if ( !parent->isMember(key) )
 				{
 					switch ( cmd )
 					{
-						case Set:
+						case GetOrCreate: case Set: case GetSet:
 							(*parent)[key] = Json::Value(Json::ValueType::nullValue);
 							break;
-						case ArrayPush: case ArrayPop: case ArrayUnshift: case ArrayShift: case ArrayCut:
+						case ArrayPush: case ArrayUnshift: case ArraySplice:
 						case ListPush: case ListUnshift: case ListPushUniq: case ListUnshiftUniq:
 							(*parent)[key] = Json::Value(Json::ValueType::arrayValue);
 							break;
@@ -292,6 +282,8 @@ JSON Document::execute( const std::string &expr, CMD cmd, const JSON &arg )
 							(*parent)[key] = Json::Value(false);
 							break;
 						default:
+							assert(false);
+							return JSON::Null;
 							break;
 					}
 				}
@@ -305,7 +297,7 @@ JSON Document::execute( const std::string &expr, CMD cmd, const JSON &arg )
 				std::string key( tmp.substr(offA+1) );
 				int idx = atoi( key.c_str() );
 				if ( idx < 0 )
-					throw std::runtime_error( "Invalid array index." );
+					throw Error( 500, "Invalid array index." );
 				Json::Value *parent = NULL;
 				if ( parentPath.length() <= 0 || parentPath == "." )
 					parent = &content;
@@ -317,16 +309,16 @@ JSON Document::execute( const std::string &expr, CMD cmd, const JSON &arg )
 				}
 
 				if ( parent == NULL || !parent->isArray() )
-					throw std::runtime_error( "The root is not a object." );
+					throw Error( 500, "The root is not a object." );
 
 				if ( !parent->isValidIndex(idx) )
 				{
 					switch ( cmd )
 					{
-						case Set:
+						case GetOrCreate: case Set: case GetSet:
 							(*parent)[idx] = Json::Value(Json::ValueType::nullValue);
 							break;
-						case ArrayPush: case ArrayPop: case ArrayUnshift: case ArrayShift: case ArrayCut:
+						case ArrayPush: case ArrayUnshift: case ArraySplice:
 						case ListPush: case ListUnshift: case ListPushUniq: case ListUnshiftUniq:
 							(*parent)[idx] = Json::Value(Json::ValueType::arrayValue);
 							break;
@@ -343,6 +335,8 @@ JSON Document::execute( const std::string &expr, CMD cmd, const JSON &arg )
 							(*parent)[idx] = Json::Value(false);
 							break;
 						default:
+							assert(false);
+							return JSON::Null;
 							break;
 					}
 				}
@@ -354,592 +348,819 @@ JSON Document::execute( const std::string &expr, CMD cmd, const JSON &arg )
 	}
 	else
 		return manipulate( path.make(content), cmd, arg );
+	 */
+	return OK;
 }
 
-JSON Document::manipulate( Json::Value &sub, CMD cmd, const JSON &arg )
+Document::Status Document::manipulate( JSONDoc &sub, CMD cmd, JSONDoc &arg, JSONDoc &res )
 {
+	Status result = OK;
 	if ( cmd == CMD::Exists )
 	{
-		return sub.isNull() ? JSON::False : JSON::True;
+		res.SetBool( !sub.IsNull() );
+		return result;
 	}
 
-	JSON	result = JSON::Null;
 	if ( isReadonlyCmd(cmd) )
 	{
-		if ( sub.isNull() )
-			return JSON::Null;
-		
-		rlock();
-		switch ( cmd )
+		if ( sub.IsNull() )
 		{
-			case Get:
-				result = &sub;
-				break;
-			case ArraySlice:
-				result = arraySlice( sub, arg );
-				break;
-			case ArrayCount:
-				result = arrayCount( sub, arg );
-				break;
-			case StringLength:
-				result = stringLength( sub, arg );
-				break;
-			case ObjectKeys:
-				result = objectKeys( sub, arg );
-			default:
-				break;
+			res.SetNull();
+			return result;
+		}
+
+		try
+		{
+			switch ( cmd )
+			{
+				case Sync:
+					res.SetBool( save() );
+					break;
+				case Get:
+					res.CopyFrom( sub, allocator() );
+					break;
+				case ArraySlice:
+					result = arraySlice( sub, arg, res );
+					break;
+				case ArrayCount:
+					result = arrayCount( sub, arg, res );
+					break;
+				case StringLength:
+					result = stringLength( sub, arg, res );
+					break;
+				case StringSub:
+					result = stringSub( sub, arg, res );
+					break;
+				case ObjectKeys:
+					result = objectKeys( sub, arg, res );
+				default:
+					break;
+			}
+		}
+		catch ( const Error le )
+		{
+			throw le;
 		}
 	}
 	else
 	{
-		wlock();
-		switch ( cmd )
+		try
 		{
-			case Set:
-				result = set( sub, arg );
-				break;
-			case GetSet:
-				result = getSet( sub, arg );
-				break;
+			switch ( cmd )
+			{
+				case GetOrCreate:
+					result = getOrCreate( sub, arg, res );
+					break;
+				case Set:
+					result = set( sub, arg, res );
+					break;
+				case GetSet:
+					result = getSet( sub, arg, res );
+					break;
 
-			//array
-			case ArrayPush:
-				result = arrayPush( sub, arg );
-				break;
-			case ArrayPop:
-				result = arrayPop( sub, arg );
-				break;
-			case ArrayUnshift:
-				result = arrayUnshift( sub, arg );
-				break;
-			case ArrayShift:
-				result = arrayShift( sub, arg );
-				break;
-			case ArraySplice:
-				result = arraySplice( sub, arg );
-				break;
-			case ArrayCut:
-				result = arrayCut( sub, arg );
-				break;
+				//array
+				case ArrayPush:
+					result = arrayPush( sub, arg, res );
+					break;
+				case ArrayPop:
+					result = arrayPop( sub, arg, res );
+					break;
+				case ArrayUnshift:
+					result = arrayUnshift( sub, arg, res );
+					break;
+				case ArrayShift:
+					result = arrayShift( sub, arg, res );
+					break;
+				case ArraySplice:
+					result = arraySplice( sub, arg, res );
+					break;
+				case ArrayCut:
+					result = arrayCut( sub, arg, res );
+					break;
+				case ArrayRandGet:
+					result = arrayRandGet( sub, arg, res );
+					break;
+				case ArrayRandPop:
+					result = arrayRandPop( sub, arg, res );
+					break;
 
-			//list
-			case ListPush:
-				result = listPush( sub, arg );
-				break;
-			case ListUnshift:
-				result = listUnshift( sub, arg );
-				break;
-			case ListPushUniq:
-				result = listPush( sub, arg, true );
-				break;
-			case ListUnshiftUniq:
-				result = listUnshift( sub, arg, true );
-				break;
+				//list
+				case ListPush:
+					result = listPush( sub, arg, res );
+					break;
+				case ListUnshift:
+					result = listUnshift( sub, arg, res );
+					break;
+				case ListPushUniq:
+					result = listPush( sub, arg, res, true );
+					break;
+				case ListUnshiftUniq:
+					result = listUnshift( sub, arg, res, true );
+					break;
 
-			//object
-			case ObjectSet:
-				result = objectSet( sub, arg );
-				break;
-			case ObjectDel:
-				result = objectDel( sub, arg );
-				break;
+				//object
+				case ObjectSet:
+					result = objectSet( sub, arg, res );
+					break;
+				case ObjectDel:
+					result = objectDel( sub, arg, res );
+					break;
 
-			//number
-			case NumberIncr:
-				result = numberIncr( sub, arg );
-				break;
-			case NumberDecr:
-				result = numberDecr( sub, arg );
-				break;
+				//number
+				case NumberIncr:
+					result = numberIncr( sub, arg, res );
+					break;
+				case NumberDecr:
+					result = numberDecr( sub, arg, res );
+					break;
 
-			//string
-			case StringAppend:
-				result = stringAppend( sub, arg );
-				break;
-			case StringPrepend:
-				result = stringPrepend( sub, arg );
-				break;
+				//string
+				case StringAppend:
+					result = stringAppend( sub, arg, res );
+					break;
+				case StringPrepend:
+					result = stringPrepend( sub, arg, res );
+					break;
 
-			//boolean
-			case BoolToggle:
-				result = boolToggle( sub, arg );
-				break;
+				//boolean
+				case BoolToggle:
+					result = boolToggle( sub, arg, res );
+					break;
 
-			default:
-				break;
+				default:
+					break;
+			}
+		}
+		catch ( const Error le )
+		{
+			throw le;
 		}
 	}
-	unlock();
 
-	return result;
+	return OK;
 }
 
-inline const JSON getArg( const JSON &arg, int i )
+inline const JSONVal &getArg( const JSONDoc &arg, int i )
 {
-	if ( arg.isArray() && arg.isValidIndex(i) )
+	if ( arg.IsArray() && i < arg.Size() )
 		return arg[i];
 
 	return JSON::Null;
 }
 
 //private
-inline void assertArray( Json::Value &root )
+inline void assertArray( JSONDoc &root )
 {
-	if ( !root.isArray() )
-		throw std::runtime_error( "The root is not an array." );
+	if ( !root.IsArray() )
+		throw Document::Error( Document::LogicError, "The root is not an array." );
 }
 
-inline void assertObject( Json::Value &root )
+inline void assertObject( JSONDoc &root )
 {
-	if ( !root.isObject() )
-		throw std::runtime_error( "The root is not an object." );
+	if ( !root.IsObject() )
+		throw Document::Error( Document::LogicError, "The root is not an object." );
 }
 
-inline void assertNumber( Json::Value &root )
+inline void assertNumber( JSONDoc &root )
 {
-	if ( !root.isConvertibleTo(Json::ValueType::realValue) )
-		throw std::runtime_error( "The root is not a number." );
+	if ( !root.IsNumber() )
+		throw Document::Error( Document::LogicError, "The root is not a number." );
 }
 
-inline void assertString( Json::Value &root )
+inline void assertString( JSONDoc &root )
 {
-	if ( !root.isConvertibleTo(Json::ValueType::stringValue) )
-		throw std::runtime_error( "The root is not a string." );
+	if ( !root.IsString() )
+		throw Document::Error( Document::LogicError, "The root is not a string." );
 }
 
-inline void assertBool( Json::Value &root )
+inline void assertBool( JSONDoc &root )
 {
-	if ( !root.isConvertibleTo(Json::ValueType::booleanValue) )
-		throw std::runtime_error( "The root is not a boolean." );
+	if ( !root.IsBool() )
+		throw Document::Error( Document::LogicError, "The root is not a boolean." );
 }
 
-inline void assertArg( bool v, std::string msg )
+inline void assertArg( const bool v, std::string msg )
 {
 	if ( !v )
-		throw std::runtime_error( msg );
+		throw Document::Error( Document::LogicError, msg );
 }
 
-JSON Document::set( Json::Value &root, const JSON &arg )
+Document::Status Document::getOrCreate( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
-	touch();
+	if ( root.IsNull() && arg.IsArray() && arg.Size() > 0 )
+	{
+		root.CopyFrom( getArg( arg, 0 ), allocator() );
+		touch();
+	}
+	res.CopyFrom( root, allocator() );
 
-	root = getArg( arg, 0 );
-	return root;
+	return OK;
 }
 
-JSON Document::getSet( Json::Value &root, const JSON &arg )
+Document::Status Document::set( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
+	root.CopyFrom( getArg( arg, 0 ), allocator() );
+	touch();
+	res.CopyFrom( root, allocator() );
+
+	return OK;
+}
+
+Document::Status Document::setIfNotExists( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	if ( root.IsNull() )
+	{
+		root.CopyFrom( getArg( arg, 0 ), allocator() );
+		touch();
+	}
+	res.CopyFrom( root, allocator() );
+
+	return OK;
+}
+
+Document::Status Document::getSet( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	res.CopyFrom( root, allocator() );
+	root.CopyFrom( getArg( arg, 0 ), allocator() );
 	touch();
 
-	JSON old(root);
-	root = getArg( arg, 0 );
-	
-	return old;
+	return OK;
 }
 
 //array
-JSON Document::arrayPush( Json::Value &root, const JSON &arg )
+Document::Status Document::arrayPush( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertArray(root);
-	assertArg(arg.size() > 0, "No arguments specified." );
+	assertArg(arg.Size() > 0, "No arguments specified." );
 
-	for ( unsigned int i=0; i < arg.size(); i++ )
+	for ( unsigned int i=0; i < arg.Size(); i++ )
 	{
-		root.append( arg[i] );
+		root.PushBack( arg[i], allocator() );
 	}
 	touch();
-	return root;
+	res.CopyFrom( root, allocator() );
+
+	return OK;
 }
 
-JSON Document::arrayPop( Json::Value &root, const JSON &arg )
+Document::Status Document::arrayPop( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertArray(root);
-	if ( root.size() <= 0 )
-		return JSON::Null;
+	if ( root.Size() <= 0 )
+	{
+		res.SetNull();
+		return OK;
+	}
 
-	Json::ArrayIndex idx = root.size()-1;
-	Json::Value val = root[idx];
-	touch();
-	root.resize( idx );
-
-	return val;
-}
-
-JSON Document::arrayUnshift( Json::Value &root, const JSON &arg )
-{
-	assertArray(root);
-	assertArg(arg.size() > 0, "No arguments specified." );
-
-	Json::Value newArray(arg);
-	for ( unsigned int i=0; i < root.size(); i++ )
-		newArray.append( root[i] );
-	touch();
-	root.swap(newArray);
-
-	return root;
-}
-
-JSON Document::arrayShift( Json::Value &root, const JSON &arg )
-{
-	assertArray(root);
-	if ( root.size() <= 0 )
-		return JSON::Null;
-
-	Json::Value val = JSON(root[0]);
-	Json::Value newArray(Json::ValueType::arrayValue);
-
-	for ( unsigned int i=1; i < root.size(); i++ )
-		newArray.append( root[i] );
+	res.CopyFrom( *(root.End()), allocator() );
+	root.PopBack();
 
 	touch();
-	root.swap(newArray);
 
-	return val;
+	return OK;
 }
 
-JSON Document::arraySplice( Json::Value &root, const JSON &arg )
+Document::Status Document::arrayUnshift( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertArray(root);
+	assertArg(arg.Size() > 0, "No arguments specified." );
 
-	JSON oOff = getArg( arg, 0 );
-	JSON oDelCnt = getArg( arg, 1 );
+	JSONVal newArray( rapidjson::Type::kArrayType );
+	newArray.Reserve( arg.Size()+root.Size(), allocator() );
+	for ( int i=0; i < arg.Size(); i++ )
+		newArray.PushBack( arg[i], allocator() );
 
-	assertArg( oOff.isConvertibleTo(Json::ValueType::uintValue), "The first argument must be an Unsigned integer." );
-	assertArg( oDelCnt.isConvertibleTo(Json::ValueType::uintValue), "The second argument must be an Unsigned integer." );
+	for ( int i=0; i < root.Size(); i++ )
+		newArray.PushBack( root[i], allocator() );
 
-	unsigned int off = oOff.asUInt();
-	unsigned int delCnt = oDelCnt.asUInt();
-
-	Json::Value newArray(Json::ValueType::arrayValue);
-	for ( unsigned int i=0; i < root.size() && i < off; i++ )
-		newArray.append( root[i] );
-	for ( unsigned int i=2; i < arg.size(); i++ )
-		newArray.append( arg[i] );
-	for ( unsigned int i=off+delCnt; i < root.size(); i++ )
-		newArray.append( root[i] );
-
+	root.Swap( newArray );
 	touch();
-	root.swap(newArray);
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
-JSON Document::arrayCut( Json::Value &root, const JSON &arg )
+Document::Status Document::arrayShift( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertArray(root);
-	JSON oSize = getArg( arg, 0 );
-	JSON oOff = getArg( arg, 1 );
+	if ( root.Size() <= 0 )
+	{
+		res.SetNull();
+		return OK;
+	}
 
-	assertArg( oSize.isConvertibleTo(Json::ValueType::uintValue), "The first argument must be an Unsigned integer." );
+	res.CopyFrom( root[0u], allocator() );
+	JSONVal newArray( rapidjson::Type::kArrayType );
+	newArray.Reserve( root.Size()-1, allocator() );
 
-	unsigned int size = oSize.asUInt();
+	for ( int i=1; i < root.Size(); i++ )
+		newArray.PushBack( root[i], allocator() );
+
+	root.Swap(newArray);
+	touch();
+
+	return OK;
+}
+
+Document::Status Document::arraySplice( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	assertArray(root);
+	assertArg(arg.Size() > 1, "No arguments specified." );
+
+	assertArg( arg[0u].IsNumber(), "The first argument must be an unsigned integer." );
+	assertArg( arg[1u].IsNumber(), "The second argument must be an unsigned integer." );
+
+	int off = arg[0u].GetInt();
+	int delCnt = arg[1u].GetInt();
+
+	JSONVal newArray( rapidjson::Type::kArrayType );
+	for ( int i=0; i < root.Size() && i < off; i++ )
+		newArray.PushBack( root[i], allocator() );
+	for ( int i=2; i < arg.Size(); i++ )
+		newArray.PushBack( arg[i], allocator() );
+	for ( int i=off+delCnt; i < root.Size(); i++ )
+		newArray.PushBack( root[i], allocator() );
+
+	root.Swap(newArray);
+	touch();
+	res.CopyFrom( root, allocator() );
+
+	return OK;
+}
+
+Document::Status Document::arrayCut( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	assertArray(root);
+	assertArg(arg.Size() > 0, "No arguments specified." );
+
+	assertArg( arg[0u].IsUint(), "The first argument must be an unsigned integer." );
+	unsigned int size = arg[0u].GetUint();
+
 	int off = 0;
-	if ( arg.size() > 1 )
+	if ( arg.Size() > 1 )
 	{
-		assertArg( oOff.isConvertibleTo(Json::ValueType::intValue), "The second argument must be an Integer." );
-		off = oOff.asInt();
+		assertArg( arg[1u].IsInt(), "The second argument must be an integer." );
+		off = arg[1u].GetInt();
 	}
 
-	if ( off < 0 && -off >= root.size() )
+	if ( off < 0 && -off >= root.Size() )
 		off = 0;
 
 	if ( off == 0 )
 	{
-		if ( size < root.size() )
+		if ( size < root.Size() )
 		{
+			while ( size < root.Size() )
+				root.PopBack();
 			touch();
-			root.resize( size );
 		}
 	}
 	else if ( off < 0 )
 	{
-		Json::Value newArray(Json::ValueType::arrayValue);
-		for ( unsigned int i=root.size()+off; i < root.size() && newArray.size() < size; i++ )
-			newArray.append( root[i] );
+		JSONVal newArray( rapidjson::Type::kArrayType );
+		for ( unsigned int i=root.Size()+off; i < root.Size() && newArray.Size() < size; i++ )
+			newArray.PushBack( root[i], allocator() );
+		root.Swap( newArray );
 		touch();
-		root.swap( newArray );
 	}
 	else
 	{
-		assertArg( root.isValidIndex(off), "Invalid offset value." );
-		Json::Value newArray(Json::ValueType::arrayValue);
-		for ( unsigned int i=off; i < root.size() && newArray.size() < size; i++ )
-			newArray.append( root[i] );
+		assertArg( off < root.Size(), "Invalid offset value." );
+		JSONVal newArray( rapidjson::Type::kArrayType );
+		for ( unsigned int i=off; i < root.Size() && newArray.Size() < size; i++ )
+			newArray.PushBack( root[i], allocator() );
+		root.Swap( newArray );
 		touch();
-		root.swap( newArray );
 	}
-	return root;
+	res.CopyFrom( root, allocator() );
+	return OK;
 }
 
-JSON Document::arraySlice( Json::Value &root, const JSON &arg )
+Document::Status Document::arraySlice( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertArray(root);
-	JSON oSize = getArg( arg, 0 );
-	JSON oOff = getArg( arg, 1 );
+	assertArg(arg.Size() > 0, "No arguments specified." );
+	assertArg( arg[0u].IsUint(), "The first argument must be an unsigned integer." );
+	unsigned int size = arg[0u].GetUint();
 
-	assertArg( oSize.isConvertibleTo(Json::ValueType::uintValue), "The first argument must be an Unsigned integer." );
-
-	unsigned int size = oSize.asUInt();
 	int off = 0;
-	if ( arg.size() > 1 )
+	if ( arg.Size() > 1 )
 	{
-		assertArg( oOff.isConvertibleTo(Json::ValueType::intValue), "The second argument must be an Integer." );
-		off = oOff.asInt();
+		assertArg( arg[1u].IsInt(), "The second argument must be an Integer." );
+		off = arg[1u].GetInt();
 	}
 
-	if ( off < 0 && -off >= root.size() )
+	if ( off < 0 && -off >= root.Size() )
 		off = 0;
 
-	Json::Value newArray(Json::ValueType::arrayValue);
+	res.SetArray();
 	if ( off < 0 )
 	{
-		for ( unsigned int i=root.size()+off; i < root.size() && newArray.size() < size; i++ )
-			newArray.append( root[i] );
+		for ( unsigned int i=root.Size()+off; i < root.Size() && res.Size() < size; i++ )
+			res.PushBack( root[i], allocator() );
 	}
 	else
 	{
-		for ( unsigned int i=off; i < root.size() && newArray.size() < size; i++ )
-			newArray.append( root[i] );
+		for ( unsigned int i=off; i < root.Size() && res.Size() < size; i++ )
+			res.PushBack( root[i], allocator() );
 	}
-	return newArray;
+	return OK;
 }
 
-JSON Document::arrayCount( Json::Value &root, const JSON &arg )
+Document::Status Document::arrayCount( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertArray(root);
+	res.SetUint( root.Size() );
 
-	return JSON((Json::UInt) root.size());
+	return OK;
 }
 
-//list
-JSON Document::listUniqArg( Json::Value &root, const JSON &arg )
+Document::Status Document::arrayRandGet( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
-	JSON args( Json::ValueType::arrayValue );
-	for ( unsigned int i=1; i < arg.size(); i++ )
-		assertArg( (arg[i].isConvertibleTo(Json::ValueType::stringValue) || arg[i].isConvertibleTo(Json::ValueType::realValue)), "Value argument must be a string or number." );
-	for ( unsigned int i=1; i < arg.size(); i++ )
+	assertArray(root);
+	if ( root.Size() <= 0 )
 	{
-		std::string v(arg[i].asString());
+		res.SetNull();
+		return OK;
+	}
+
+	res.CopyFrom( root[Util::microtime()%root.Size()], allocator() );
+	return OK;
+}
+
+Document::Status Document::arrayRandPop( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	assertArray(root);
+	if ( root.Size() <= 0 )
+	{
+		res.SetNull();
+		return OK;
+	}
+
+	unsigned idx = Util::microtime()%root.Size();
+	res.CopyFrom( root[idx], allocator() );
+
+	JSONVal newArray( rapidjson::Type::kArrayType );
+	newArray.Reserve( root.Size()-1, allocator() );
+	for ( unsigned int i=0; i < idx; i++ )
+		newArray.PushBack( root[i], allocator() );
+	for ( unsigned int i=idx+1; i < root.Size(); i++ )
+		newArray.PushBack( root[i], allocator() );
+
+	root.Swap(newArray);
+	touch();
+
+	return OK;
+
+}
+
+
+//list
+void Document::listUniqArg( JSONDoc &root, JSONDoc &arg, JSONVal &res )
+{
+	res.SetArray();
+	for ( unsigned int i=1; i < arg.Size(); i++ )
+		assertArg( (arg[i].IsString() || arg[i].IsNumber()), "Value argument must be a string or number." );
+	for ( unsigned int i=1; i < arg.Size(); i++ )
+	{
+		std::string v(arg[i].GetString());
 		bool same = false;
-		for ( unsigned int p=0; p < root.size(); p++ )
+		for ( unsigned int p=0; p < root.Size(); p++ )
 		{
-			if ( root[p].asString() == v )
+			if ( root[p].GetString() == v )
 			{
 				same = true;
 				break;
 			}
 		}
 		if ( !same )
-			args.append( arg[i] );
+			res.PushBack( arg[i], allocator() );
 	}
-	return args;
 }
 
-JSON Document::listPush( Json::Value &root, const JSON &arg, bool checkUniq )
+Document::Status Document::listPush( JSONDoc &root, JSONDoc &arg, JSONDoc &res, bool checkUniq )
 {
 	assertArray(root);
-	JSON oLimit = getArg( arg, 0 );
-	assertArg( oLimit.isConvertibleTo(Json::ValueType::uintValue), "The first argument must be an Unsigned integer." );
-	unsigned int limit = oLimit.asUInt();
-	assertArg( limit > 0, "The first argument must be greater than 0." );
-	assertArg( arg.size() > 1, "No arguments specified." );
+	assertArg(arg.Size() > 1, "No arguments specified." );
 
-	JSON args;
+	assertArg( arg[0u].IsUint(), "The first argument must be an unsigned integer." );
+	unsigned int limit = arg[0u].GetUint();
+	assertArg( limit > 0, "The first argument must be greater than 0." );
+
+	JSONVal args;
 	if ( checkUniq )
 	{
-		args = listUniqArg( root, arg );
-		if ( args.size() <= 0 )
-			return root;
+		listUniqArg( root, arg, args );
+		if ( args.Size() <= 0 )
+		{
+			res.CopyFrom( root, allocator() );
+			return OK;
+		}
 	}
 	else
-		args.swap((Json::Value &) arg);
+		args.Swap( arg );
 
+	if ( root.Size()+args.Size()-1 <= limit )
+	{
+		for ( unsigned int i=1; i < args.Size(); i++ )
+			root.PushBack( args[i], allocator() );
+	}
+	else if ( args.Size()-1 >= limit )
+	{
+		JSONVal newArray( rapidjson::Type::kArrayType );
+		for ( unsigned int i=args.Size()-limit; i < args.Size() && newArray.Size() < limit; i++ )
+			newArray.PushBack( args[i], allocator() );
+		root.Swap( newArray );
+	}
+	else
+	{
+		JSONVal newArray( rapidjson::Type::kArrayType );
+		for ( unsigned int i=(root.Size()+args.Size()-1)-limit; i < root.Size(); i++ )
+			newArray.PushBack( root[i], allocator() );
+		for ( unsigned int i=1; i < args.Size(); i++ )
+			newArray.PushBack( args[i], allocator() );
+		root.Swap( newArray );
+	}
 	touch();
-	if ( root.size()+args.size()-1 <= limit )
-	{
-		for ( unsigned int i=1; i < args.size(); i++ )
-			root.append( args[i] );
-	}
-	else if ( args.size()-1 >= limit )
-	{
-		Json::Value newArray(Json::ValueType::arrayValue);
-		for ( unsigned int i=1; i < args.size() && newArray.size() < limit; i++ )
-			newArray.append( args[i] );
-		root.swap( newArray );
-	}
-	else
-	{
-		Json::Value newArray(Json::ValueType::arrayValue);
-		for ( unsigned int i=root.size()-(limit-args.size()-1); i < root.size(); i++ )
-			newArray.append( root[i] );
-		for ( unsigned int i=1; i < args.size(); i++ )
-			newArray.append( args[i] );
-		root.swap( newArray );
-	}
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
-JSON Document::listUnshift( Json::Value &root, const JSON &arg, bool checkUniq )
+Document::Status Document::listUnshift( JSONDoc &root, JSONDoc &arg, JSONDoc &res, bool checkUniq )
 {
 	assertArray(root);
-	JSON oLimit = getArg( arg, 0 );
-	assertArg( oLimit.isConvertibleTo(Json::ValueType::uintValue), "The first argument must be an Unsigned integer." );
-	unsigned int limit = oLimit.asUInt();
-	assertArg( limit > 0, "The first argument must be greater than 0." );
-	assertArg( arg.size() > 1, "No arguments specified." );
+	assertArg(arg.Size() > 1, "No arguments specified." );
 
-	JSON args;
+	assertArg( arg[0u].IsUint(), "The first argument must be an unsigned integer." );
+	unsigned int limit = arg[0u].GetUint();
+	assertArg( limit > 0, "The first argument must be greater than 0." );
+
+	JSONVal args;
 	if ( checkUniq )
 	{
-		args = listUniqArg( root, arg );
-		if ( args.size() <= 0 )
-			return root;
+		listUniqArg( root, arg, args );
+		if ( args.Size() <= 0 )
+		{
+			res.CopyFrom( root, allocator() );
+			return OK;
+		}
 	}
 	else
-		args.swap((Json::Value &) arg);
+		args.Swap( arg );
 
-	Json::Value newArray(Json::ValueType::arrayValue);
-	for ( unsigned int i=1; i < args.size() && newArray.size() < limit; i++ )
-		newArray.append( args[i] );
-	for ( unsigned int i=0; i < root.size() && newArray.size() < limit; i++ )
-		newArray.append( root[i] );
+	JSONVal newArray( rapidjson::Type::kArrayType );
+	for ( unsigned int i=1; i < args.Size() && newArray.Size() < limit; i++ )
+		newArray.PushBack( args[i], allocator() );
+	for ( unsigned int i=0; i < root.Size() && newArray.Size() < limit; i++ )
+		newArray.PushBack( root[i], allocator() );
 
+	root.Swap( newArray );
 	touch();
-	root.swap( newArray );
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
 //object
-JSON Document::objectSet( Json::Value &root, const JSON &arg )
+Document::Status Document::objectSet( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertObject(root);
-	assertArg( arg.size() > 1, "No arguments specified." );
-
-	touch();
-	for ( int i=0; i < arg.size(); i+=2 )
-	{
-		if ( arg[i].isString() && arg[i].isConvertibleTo(Json::ValueType::stringValue) )
-			root[arg[i].asString()] = getArg( arg, i+1 );
-	}
-	return root;
-}
-
-JSON Document::objectDel( Json::Value &root, const JSON &arg )
-{
-	assertObject(root);
+	assertArg( arg.Size() > 0, "No arguments specified." );
 
 	bool changed = false;
-	for ( int i=0; i < arg.size(); i++ )
+	for ( int i=0; i < arg.Size(); i+=2 )
 	{
-		if ( arg[i].isString() && arg[i].isConvertibleTo(Json::ValueType::stringValue) && root.isMember( arg[i].asString() ) )
+		if ( arg[i].IsString() )
 		{
-			if ( !changed ) changed = true;
-			root.removeMember( arg[i].asString() );
+			changed = true;
+			if ( root.HasMember( arg[i] ) )
+				root.RemoveMember( arg[i] );
+			root.AddMember( arg[i], arg[i+1], allocator() );
 		}
 	}
 	if ( changed )
 		touch();
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
-JSON Document::objectKeys( Json::Value &root, const JSON &arg )
+Document::Status Document::objectSetIfNotExists( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	assertObject(root);
+	assertArg( arg.Size() > 0, "No arguments specified." );
+
+	bool changed = false;
+	for ( int i=0; i < arg.Size(); i+=2 )
+	{
+		if ( arg[i].IsString() )
+		{
+			changed = true;
+			if ( !root.HasMember( arg[i] ) )
+				root.AddMember( arg[i], arg[i+1], allocator() );
+		}
+	}
+	if ( changed )
+		touch();
+	res.CopyFrom( root, allocator() );
+
+	return OK;
+}
+
+Document::Status Document::objectDel( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	assertObject(root);
+	assertArg( arg.Size() > 0, "No arguments specified." );
+
+	bool changed = false;
+	for ( int i=0; i < arg.Size(); i++ )
+	{
+		if ( arg[i].IsString() )
+		{
+			if ( root.HasMember( arg[i] ) )
+			{
+				changed = true;
+				root.RemoveMember( arg[i] );
+			}
+		}
+	}
+	if ( changed )
+		touch();
+	res.CopyFrom( root, allocator() );
+
+	return OK;
+}
+
+Document::Status Document::objectKeys( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertObject(root);
 
-	JSON result(Json::ValueType::arrayValue);
-	std::vector<std::string> members = content.getMemberNames();
-	for ( size_t i=0; i < members.size(); i++ )
-		result.append( members[i] );
+	bool		search = false;
+	std::string	term;
+	if ( arg.Size() > 0 && arg[0u].IsString() )
+	{
+		search = true;
+		term = arg[0u].GetString();
+	}
 
-	return result;
+	res.SetArray();
+	for ( rapidjson::Value::MemberIterator it = root.MemberBegin(); it != root.MemberEnd(); ++it )
+	{
+		if ( search )
+		{
+			if ( (*it).name.GetStringLength() < term.length() || std::string( (*it).name.GetString() ).find( term ) == std::string::npos )
+				continue;
+		}
+		res.PushBack( (*it).name, allocator() );
+	}
+
+	return OK;
 }
 
 //number
-JSON Document::numberIncr( Json::Value &root, const JSON &arg )
+Document::Status Document::numberIncr( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertNumber(root);
 
 	double val = 1.0f;
-	if ( arg.size() > 0 )
+	if ( arg.Size() > 0 )
 	{
-		assertArg( arg[0].isConvertibleTo(Json::ValueType::realValue), "The first argument must be a number." );
-		val = arg[0].asDouble();
+		assertArg( arg[0u].IsNumber(), "The first argument must be a number." );
+		val = arg[0u].GetDouble();
 	}
 
-	Json::Value newVal( root.asDouble()+val );
+	double v = root.GetDouble()+val;
+	if ( Util::isInteger(v) )
+	{
+		root.SetInt64( v );
+	}
+	else
+	{
+		root.SetDouble( v );
+	}
 	touch();
-	root.swap( newVal );
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
-JSON Document::numberDecr( Json::Value &root, const JSON &arg )
+Document::Status Document::numberDecr( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertNumber(root);
 
 	double val = 1.0f;
-	if ( arg.size() > 0 )
+	if ( arg.Size() > 0 )
 	{
-		assertArg( arg[0].isConvertibleTo(Json::ValueType::realValue), "The first argument must be a number." );
-		val = arg[0].asDouble();
+		assertArg( arg[0u].IsNumber(), "The first argument must be a number." );
+		val = arg[0u].GetDouble();
 	}
 
-	Json::Value newVal( root.asDouble()-val );
+	double v = root.GetDouble()-val;
+	if ( Util::isInteger(v) )
+	{
+		root.SetInt64( v );
+	}
+	else
+	{
+		root.SetDouble( v );
+	}
 	touch();
-	root.swap( newVal );
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
 //string
-JSON Document::stringAppend( Json::Value &root, const JSON &arg )
+Document::Status Document::stringAppend( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertString(root);
-	assertArg( arg.size() > 0 && arg[0].isConvertibleTo(Json::ValueType::stringValue), "The first argument must be a string." );
+	assertArg( arg.Size() > 0 && arg[0u].IsString(), "The first argument must be a string." );
 
-	std::string val( root.asString() );
-	val.append( arg[0].asString() );
+	std::string val( root.GetString() );
+	val.append( arg[0u].GetString() );
 
+	root.SetString( val.c_str(), allocator() );
 	touch();
-	Json::Value newVal(val);
-	root.swap(newVal);
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
-JSON Document::stringPrepend( Json::Value &root, const JSON &arg )
+Document::Status Document::stringPrepend( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertString(root);
-	assertArg( arg.size() > 0 && arg[0].isConvertibleTo(Json::ValueType::stringValue), "The first argument must be a string." );
+	assertArg( arg.Size() > 0 && arg[0u].IsString(), "The first argument must be a string." );
 
-	std::string val( arg[0].asString() );
-	val.append( root.asString() );
+	std::string val( arg[0u].GetString() );
+	val.append( root.GetString() );
 
+	root.SetString( val.c_str(), allocator() );
 	touch();
-	Json::Value newVal(val);
-	root.swap(newVal);
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
 }
 
-JSON Document::stringLength( Json::Value &root, const JSON &arg )
+Document::Status Document::stringLength( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
+{
+	assertString(root);
+	res.SetUint( root.GetStringLength() );
+
+	return OK;
+}
+
+Document::Status Document::stringSub( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertString(root);
 
-	return JSON((Json::UInt) root.asString().length());
+	std::string		val = root.GetString();
+	ssize_t			off = 0;
+	ssize_t			len = val.length();
+
+	if ( arg.Size() > 0 )
+	{
+		assertArg( arg[0u].IsInt(), "The first argument must be an integer." );
+		off = arg[0u].GetInt();
+	}
+	if ( arg.Size() > 1 )
+	{
+		assertArg( arg[1u].IsUint(), "The second argument must be an unsigned integer." );
+		len = arg[1u].GetUint();
+	}
+
+	if ( off >= 0 )
+		res.SetString( val.substr(MIN(off,val.length()), len).c_str(), allocator() );
+	else
+		res.SetString( val.substr(MAX(0,val.length()+off), len).c_str(), allocator() );
+	return OK;
 }
 
 //boolean
-JSON Document::boolToggle( Json::Value &root, const JSON &arg )
+Document::Status Document::boolToggle( JSONDoc &root, JSONDoc &arg, JSONDoc &res )
 {
 	assertBool(root);
 
-	Json::Value newVal(!root.asBool());
+	root.SetBool( !root.GetBool() );
 	touch();
-	root.swap(newVal);
+	res.CopyFrom( root, allocator() );
 
-	return root;
+	return OK;
+}
+
+
+
+
+//exception
+Document::Error::Error( const Status st, const std::string &err ): std::runtime_error(err), _status(st)
+{
+}
+
+Document::Error::Error( const Status st, const char *err ): std::runtime_error(err), _status(st)
+{
+}
+
+Document::Status Document::Error::status() const
+{
+	return _status;
 }

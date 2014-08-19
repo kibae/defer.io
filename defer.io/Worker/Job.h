@@ -17,32 +17,51 @@ class Job;
 
 class Job
 {
+	void initKey( std::string& );
 public:
 	Job( const char *buf );
 
-	typedef enum OPER_TYPE {
-		OPER_EXECUTE = 'E',		//response object
-		OPER_THROW = 'P',		//response only status/error
-		OPER_BATCH = 'B',		//response only status/error
-	} OPER_TYPE;
+	Job( uint8_t cmd, std::string key, std::string data );
+	Job( uint8_t cmd, std::string key );
+
+	typedef enum REQ_OPTION {
+		OPT_NO_RESULTSET = 'R',		//response only status/error
+	} REQ_OPTION;
 
 	struct Header
 	{
-		char			oper;
+		uint8_t			cmd;		//Document::CMD
+		uint8_t			opt;		//REQ_OPTION
 		uint32_t		apikey;
 		uint16_t		keyLen;		//max: 16KB
 		uint32_t		dataLen;	//max: 16MB
+
+		Header(): cmd(0), opt(0), apikey(0), keyLen(0), dataLen(0) {}
+	} __attribute__((packed));
+
+	struct ResponseHeader
+	{
+		uint16_t		status;
+		uint32_t		apikey;
+		uint32_t		dataLen;	//max: 16MB
+
+		ResponseHeader(): status(0), apikey(0), dataLen(0) {}
 	} __attribute__((packed));
 
 	Header				header;
 	Key					key;
+	std::string			path;
 	std::string			data;
 
 	Client				*client;
 
+	ResponseHeader		resHeader;
 	std::string			result;
 
-	static Job *parse( const std::string &buf, size_t *buf_off );
+	void execute();
+
+	static Job *parse( const std::string&, size_t* );
+	static void finish( Job* );
 
 	void dump();
 };

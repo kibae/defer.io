@@ -11,59 +11,46 @@
 
 #include "../include.h"
 
+class Cache;
+
 #include <unordered_map>
+#include <list>
+#include <vector>
 #include "Document.h"
 #include "Key.h"
 
 class Cache: public RWLock
 {
 private:
-	//LRU cache
-	struct LRU {
-		struct Entry {
-			Entry		*prev;	//LRU double linked list
-			Entry		*next;	//LRU double linked list
+	std::unordered_map<std::string, Document*> data;
+	typedef std::pair<std::string, Document*> dataRow;
 
-			Document	*val;
+	std::list<Document*> list;
+	uint64_t _changed;
+	uint64_t _lastChanged;
 
-			Entry( Document *v ): prev(NULL), next(NULL), val(v) {}
-		};
-
-		static void insertAfter( Entry *node, Entry *newNode );
-		static void insertBefore( Entry *node, Entry *newNode );
-		static void insertBeginning( Entry *newNode );
-		static void insertEnd( Entry *newNode );
-		static void remove( Entry *node );
-
-		static Entry		*head;
-		static Entry		*tail;
-	};
-
-	static std::unordered_map<std::string, LRU::Entry*> data;
-	typedef std::pair<std::string, LRU::Entry*> dataRow;
-	
-	static pthread_rwlock_t		_lock;
+	static std::vector<Cache*>	pool;
 	static unsigned long		countLimit;
+	static unsigned long		perCountLimit;
 public:
-	static uint64_t seq;
-	static inline void rlock() {
-		pthread_rwlock_rdlock( &_lock );
-	}
+	uint64_t seq;
 
-	static inline void wlock() {
-		pthread_rwlock_wrlock( &_lock );
-	}
+	static void init( long cnt );
 
-	static inline void unlock() {
-		pthread_rwlock_unlock( &_lock );
-	}
+	Cache();
 
-	static void setCountLimit( long cnt );
+	bool exists( const Key &key );
+	void push( const Key &key, Document* datum, bool ignoreExists=true );
+	Document *get( const Key &key );
+	void sync();
+	void flush();
+	void changed();
 
-	static bool exists( const Key &key );
-	static void push( const Key &key, Document* datum, bool ignoreExists=true );
-	static void remove( const Key &key, bool noLock=false );
-	static Document *get( const Key &key );
+	static Document *getCache( const Key& );
+	static void syncAll();
+	static void flushAll();
+	static Cache *getCachePool( const uint8_t );
+	static Cache *getCachePool( const Key& );
 };
 
 #endif /* defined(__defer_io__Cache__) */

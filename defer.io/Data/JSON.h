@@ -11,35 +11,52 @@
 
 #include "../include.h"
 
-#include <json/json.h>
-
-class JSON : public Json::Value
+class JSONMem
 {
-private:
-	Json::Reader				reader;
-	mutable Json::FastWriter	writer;
+	static ssize_t			used;
+	static pthread_mutex_t	_lock;
 public:
-	const static JSON	Null;
-	const static JSON	True;
-	const static JSON	False;
+	static void retain( ssize_t sz );
+	static void release( ssize_t sz );
+	static ssize_t size();
 
-	JSON();
-	JSON( Json::ValueType );
-	JSON( const Json::Value& );
+	static inline void lock() {
+		pthread_mutex_lock( &_lock );
+	}
 
-	JSON( Int );
-	JSON( UInt );
-	JSON( Int64 );
-	JSON( UInt64 );
-	JSON( double );
-	JSON( bool );
-	JSON( const std::string &buf );
+	static inline void unlock() {
+		pthread_mutex_unlock( &_lock );
+	}
+};
 
-	void parse( const std::string &buf );	//throw
-	std::string toString() const;
-	std::string toString();
+#include "../external/rapidjson/rapidjson.h"
+#include "../external/rapidjson/allocators.h"
+#include "../external/rapidjson/document.h"
+#include "../external/rapidjson/writer.h"
 
-	static JSON *fromString( const std::string &buf );
+typedef rapidjson::Value JSONVal;
+
+class JSONDoc : public rapidjson::Document
+{
+public:
+	rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator> allocator;
+
+	JSONDoc();
+	~JSONDoc();
+};
+
+class JSON
+{
+public:
+	const static JSONVal Null;
+
+	static bool parse( const std::string&, JSONDoc& );
+	static std::string stringify( JSONVal& );
+
+	rapidjson::Value &test() {
+		rapidjson::Value doc(1);
+		return doc.Move();
+	}
 };
 
 
