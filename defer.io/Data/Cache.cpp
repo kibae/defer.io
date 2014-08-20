@@ -9,13 +9,17 @@
 #include "Cache.h"
 
 std::vector<Cache*>		Cache::pool;
+unsigned long			Cache::memoryLimit = Config::DEF_CACHE_MEMORY_LIMIT;
 unsigned long			Cache::countLimit = Config::DEF_CACHE_COUNT_LIMIT;
 unsigned long			Cache::perCountLimit = ceil( ((double) Config::DEF_CACHE_COUNT_LIMIT)/((double) Key::lockSize) );
 
-void Cache::init( long cnt )
+void Cache::init( long mem, long cnt )
 {
+	Cache::memoryLimit = mem;
 	Cache::countLimit = cnt;
 	Cache::perCountLimit = ceil( ((double) cnt)/((double) Key::lockSize) );
+
+	Json::init();
 
 	for ( uint8_t i=0; i < Key::lockSize; i++ )
 	{
@@ -124,16 +128,37 @@ void Cache::sync()
 	 */
 }
 
+void Cache::flushLast()
+{
+	wlock();
+	Document *doc = list.back();
+	if ( doc != NULL )
+	{
+		list.pop_back();
+		data.erase( doc->getKey().str() );
+
+		doc->wlock();
+		if ( doc->changed() )
+			doc->save();
+		doc->unlock();
+		delete doc;
+
+		seq++;
+	}
+	unlock();
+}
+
 void Cache::flush()
 {
 	wlock();
 	while ( list.size() > 0 )
 	{
 		Document *doc = list.back();
+		list.pop_back();
+
+		doc->wlock();
 		if ( doc->changed() )
 			doc->save();
-		list.pop_back();
-		doc->wlock();
 		doc->unlock();
 		delete doc;
 	}
@@ -156,6 +181,16 @@ void Cache::syncAll()
 		//std::cout << (int)i << "	" << pool[i]->data.size() << "\n";
 		pool[i]->sync();
 	}
+
+	long i = Cache::perCountLimit/3;
+	while ( i-- && Json::Memory::size() > Cache::memoryLimit )
+	{
+		for ( uint8_t i=0; i < Key::lockSize; i++ )
+		{
+			pool[i]->flushLast();
+		}
+	}
+	//DEBUGS(Json::Memory::size())
 }
 
 void Cache::flushAll()

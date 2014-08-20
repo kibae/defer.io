@@ -13,38 +13,49 @@ const Json Json::Zero(0);
 const Json Json::True(true);
 const Json Json::False(false);
 
-/*
-ssize_t JSONMem::used = 0;
-pthread_mutex_t	JSONMem::_lock = PTHREAD_MUTEX_INITIALIZER;
+std::atomic<ssize_t> Json::Memory::used(0);
 
-void JSONMem::retain( ssize_t sz )
+void Json::Memory::retain( ssize_t sz )
 {
-	lock();
 	used += sz;
-	unlock();
 }
 
-void JSONMem::release( ssize_t sz )
+void Json::Memory::release( ssize_t sz )
 {
-	lock();
 	used -= sz;
-	unlock();
 }
 
-ssize_t JSONMem::size()
+ssize_t Json::Memory::size()
 {
 	return used;
 }
 
-JSON::Doc::Doc(): doc()
+static void *sized_malloc( size_t size )
 {
+	char *ptr = (char *) malloc( size + sizeof(size_t) );
+	*((size_t *)ptr) = size;
+	Json::Memory::retain( size );
+
+	return ptr + sizeof(size_t);
 }
 
-JSON::Doc::~Doc()
+static void sized_free( void *ptr )
 {
-	JSONMem::release( doc.GetAllocator().Capacity() );
+	size_t size;
+
+	char *p = (char *) ptr;
+	p -= sizeof(size_t);
+
+	size = *((size_t *)p);
+	Json::Memory::release( size );
+
+	free(p);
 }
-*/
+
+void Json::init()
+{
+	json_set_alloc_funcs( sized_malloc, sized_free );
+}
 
 Json::Json(): data(json_null())
 {
@@ -358,7 +369,7 @@ std::string Json::stringify()
 	if ( buf != NULL )
 	{
 		std::string res( buf );
-		free( buf );
+		sized_free( buf );
 		return res;
 	}
 	else

@@ -15,31 +15,13 @@
 
 #include <jansson.h>
 
-/*
-class JSONMem
-{
-	static ssize_t			used;
-	static pthread_mutex_t	_lock;
-public:
-	static void retain( ssize_t sz );
-	static void release( ssize_t sz );
-	static ssize_t size();
-
-	static inline void lock() {
-		pthread_mutex_lock( &_lock );
-	}
-
-	static inline void unlock() {
-		pthread_mutex_unlock( &_lock );
-	}
-};
-*/
-
 class Json
 {
 	mutable json_t		*data;
 public:
+	static void init();
 	class Path;
+	class Memory;
 
 	//static
 	const static Json Null;
@@ -193,5 +175,16 @@ public:
 
 	Argument &getLastArgument();
 };
+
+class Json::Memory
+{
+	static std::atomic<ssize_t>		used;
+public:
+	static void retain( ssize_t sz );
+	static void release( ssize_t sz );
+	static ssize_t size();
+};
+
+
 
 #endif /* defined(__defer_io__JSON__) */

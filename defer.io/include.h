@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <atomic>
 
 #include <stdlib.h>
 #include <unistd.h>

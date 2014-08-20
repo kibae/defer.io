@@ -30,12 +30,13 @@ private:
 	uint64_t _lastChanged;
 
 	static std::vector<Cache*>	pool;
+	static unsigned long		memoryLimit;
 	static unsigned long		countLimit;
 	static unsigned long		perCountLimit;
 public:
 	uint64_t seq;
 
-	static void init( long cnt );
+	static void init( long mem, long cnt );
 
 	Cache();
 
@@ -43,6 +44,7 @@ public:
 	void push( const Key &key, Document* datum, bool ignoreExists=true );
 	Document *get( const Key &key );
 	void sync();
+	void flushLast();
 	void flush();
 	void changed();
 

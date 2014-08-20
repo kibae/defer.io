@@ -30,6 +30,7 @@ private:
 	static const char		**argv;
 public:
 	//const
+	const static long		DEF_CACHE_MEMORY_LIMIT = (1024*1024*1024);	//1GB
 	const static long		DEF_CACHE_COUNT_LIMIT = (1024*100);
 	const static long		DEF_SYNC_REQ_INTERVAL = (10000);
 
