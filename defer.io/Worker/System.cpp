@@ -10,7 +10,7 @@
 #include "Document.h"
 #include "Cache.h"
 
-Document::Status System::execute( Job *job, JSONDoc &result )
+Json System::execute( Job *job )
 {
 	Document::CMD cmd = (Document::CMD) job->header.cmd;
 	switch ( cmd )
@@ -19,11 +19,9 @@ Document::Status System::execute( Job *job, JSONDoc &result )
 			Cache::flushAll();
 			break;
 		default:
-			result.SetBool( false );
-			return Document::LogicError;
+			return *Json::False;
 			break;
 	}
 
-	result.SetBool( true );
-	return Document::OK;
+	return *Json::True;
 }

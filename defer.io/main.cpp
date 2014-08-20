@@ -19,10 +19,39 @@
 #include "Document.h"
 #include "Job.h"
 
+Json test1()
+{
+	return Json(2);
+}
+
+Json test2()
+{
+	return Json("world");
+}
+
+Json test3()
+{
+	Json arr( JSON_ARRAY );
+	return arr;
+}
 
 void test()
 {
-	//return;
+	Json a( 1 );
+	Json b = test1();
+
+	a = b;
+
+	Json str1( "hello" );
+	Json str2 = test2();
+	Json arr = test3();
+	arr.setArrayMember( 0, str1 );
+	arr.setArrayMember( 1, str2 );
+
+	Json s1 = arr[0];
+	Json s2 = arr[1];
+
+	return;
 
 	DEBUGS( Document::CMD::AUTH )
 	DEBUGS( Document::CMD::OBJECT_CMD )

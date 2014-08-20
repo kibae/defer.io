@@ -14,6 +14,7 @@
 class Job;
 #include "Client.h"
 #include "Key.h"
+#include "JSON.h"
 
 class Job
 {
@@ -50,7 +51,7 @@ public:
 
 	Header				header;
 	Key					key;
-	std::string			path;
+	Json::Path			path;
 	std::string			data;
 
 	Client				*client;

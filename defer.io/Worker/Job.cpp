@@ -11,7 +11,7 @@
 #include "Document.h"
 #include "System.h"
 
-Job::Job( const char *buf ): header(), key(), path("."), data(), client(NULL), resHeader(), result()
+Job::Job( const char *buf ): header(), key(), path(), data(), client(NULL), resHeader(), result()
 {
 	memcpy( &header, buf, sizeof(Header) );
 	if ( header.cmd > Document::CMD::OBJECT_CMD )
@@ -31,7 +31,7 @@ Job::Job( const char *buf ): header(), key(), path("."), data(), client(NULL), r
 	}
 }
 
-Job::Job( uint8_t cmd, std::string _key, std::string _data ): header(), key(), path("."), data(_data), client(NULL), resHeader(), result()
+Job::Job( uint8_t cmd, std::string _key, std::string _data ): header(), key(), path(), data(_data), client(NULL), resHeader(), result()
 {
 	header.cmd = cmd;
 	header.keyLen = (uint16_t) _key.length();
@@ -41,7 +41,7 @@ Job::Job( uint8_t cmd, std::string _key, std::string _data ): header(), key(), p
 		initKey( _key );
 }
 
-Job::Job( uint8_t cmd, std::string _key ): header(), key(), path("."), data(), client(NULL), result()
+Job::Job( uint8_t cmd, std::string _key ): header(), key(), path(), data(), client(NULL), result()
 {
 	header.cmd = cmd;
 	header.keyLen = (uint16_t) _key.length();
@@ -52,7 +52,7 @@ Job::Job( uint8_t cmd, std::string _key ): header(), key(), path("."), data(), c
 
 void Job::initKey( std::string &k )
 {
-	ssize_t off = k.find_first_of( ".[" );
+	size_t off = k.find_first_of( ".[" );
 	if ( off == std::string::npos )
 		key.set( k );
 	else
@@ -64,10 +64,8 @@ void Job::initKey( std::string &k )
 		}
 
 		key.set( k.c_str(), off );
-		if ( k[off] == '.' )
-			path.append( &(k.c_str()[off+1]), k.length()-off-1 );	//object
-		else
-			path.append( &(k.c_str()[off]), k.length()-off );		//array
+		std::string p( &(k.c_str()[off]), k.length()-off );
+		path.parse( p );
 	}
 }
 
@@ -108,8 +106,8 @@ void Job::execute()
 		if ( doc == NULL )
 		{
 			//document error
-			JSONVal error( "Document not found." );
-			buf.append( JSON::stringify(error) );
+			Json error( "Document not found." );
+			buf.append( error.stringify() );
 
 			resHeader.status = 500;
 			resHeader.dataLen = (uint32_t) buf.length();
@@ -121,18 +119,19 @@ void Job::execute()
 
 		try
 		{
-			JSONDoc res, arg;
-			JSON::parse( data, arg );
-			resHeader.status = doc->execute( path, cmd, arg, res );
-			buf.append( JSON::stringify( res ) );
+			Json arg;
+			arg.parse( data );
+			resHeader.status = 200;
+			Json res = doc->execute( path, cmd, arg );
+			buf.append( res.stringify() );
 		}
-		catch ( const Document::Error& le )
+		catch ( const Json::Error& le )
 		{
 			//DEBUGS(le.status())
 			DEBUGS(le.what())
 			resHeader.status = le.status();
-			JSONVal error( le.what(), doc->allocator() );
-			buf.append( JSON::stringify(error) );
+			Json error( le.what() );
+			buf.append( error.stringify() );
 		}
 		doc->unlock();
 	}
@@ -141,18 +140,18 @@ void Job::execute()
 		//system command
 		try
 		{
-			JSONDoc res;
-			resHeader.status = System::execute( this, res );
-			buf.append( JSON::stringify( res ) );
+			resHeader.status = 200;
+			Json res = System::execute( this );
+			buf.append( res.stringify() );
 		}
-		catch ( const Document::Error& le )
+		catch ( const Json::Error& le )
 		{
 			//DEBUGS(le.status())
 			DEBUGS(le.what())
 			resHeader.status = le.status();
 			std::string tmp(le.what());
-			JSONVal error( tmp.c_str(), tmp.length() );
-			buf.append( JSON::stringify(error) );
+			Json error( tmp.c_str() );
+			buf.append( error.stringify() );
 		}
 	}
 
@@ -177,7 +176,7 @@ void Job::finish( Job *job )
 void Job::dump()
 {
 	std::cout << "Key: " << key.str() << "\n";
-	std::cout << "Path: " << path << "\n";
+	std::cout << "Path: " << path.str() << "\n";
 	std::cout << "Cmd: " << header.cmd << "\n";
 	std::cout << "Data: " << data << "\n";
 	std::cout << "Result: " << result << "\n";

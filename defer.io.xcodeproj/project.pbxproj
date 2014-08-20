@@ -14,8 +14,11 @@
 		4F374533195F2F500079028C /* defer_io.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4F374532195F2F500079028C /* defer_io.1 */; };
 		4F37453C195F30A30079028C /* libev.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F37453B195F30A30079028C /* libev.4.dylib */; };
 		4F374540195F31100079028C /* Server.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F37453E195F31100079028C /* Server.cpp */; };
+		4F50592E19A48D3800DCB69C /* libjansson.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F50592D19A48D3800DCB69C /* libjansson.4.dylib */; };
 		4F52CB8619A1545F00EEE00D /* System.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F52CB8419A1545F00EEE00D /* System.cpp */; };
 		4F96E505197C46C300F9CBCF /* Key.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F96E504197C46C300F9CBCF /* Key.cpp */; };
+		4FAF704319A4D68F006F17AB /* JSON.Path.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FAF704119A4D68F006F17AB /* JSON.Path.cpp */; };
+		4FAF704619A4D71C006F17AB /* JSON.Modifiers.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FAF704419A4D71C006F17AB /* JSON.Modifiers.cpp */; };
 		4FBD4FF519626975001F9784 /* xxhash.c in Sources */ = {isa = PBXBuildFile; fileRef = 4FBD4FF319626975001F9784 /* xxhash.c */; };
 		4FDBB85319608D1500ACB9AC /* Job.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FDBB85119608D1500ACB9AC /* Job.cpp */; };
 		4FEC2AC9197C226C00A446B9 /* DB.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4FEC2AC7197C226C00A446B9 /* DB.cpp */; };
@@ -52,35 +55,13 @@
 		4F37453B195F30A30079028C /* libev.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libev.4.dylib; path = ../../../../usr/local/Cellar/libev/4.15/lib/libev.4.dylib; sourceTree = "<group>"; };
 		4F37453E195F31100079028C /* Server.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Server.cpp; sourceTree = "<group>"; };
 		4F37453F195F31100079028C /* Server.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Server.h; sourceTree = "<group>"; };
+		4F50592D19A48D3800DCB69C /* libjansson.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libjansson.4.dylib; path = ../../../../opt/local/lib/libjansson.4.dylib; sourceTree = "<group>"; };
 		4F52CB8419A1545F00EEE00D /* System.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System.cpp; sourceTree = "<group>"; };
 		4F52CB8519A1545F00EEE00D /* System.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = System.h; sourceTree = "<group>"; };
 		4F96E502197C40C300F9CBCF /* Key.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Key.h; sourceTree = "<group>"; };
 		4F96E504197C46C300F9CBCF /* Key.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Key.cpp; sourceTree = "<group>"; };
-		4FA5A72219A2705700198947 /* allocators.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = allocators.h; sourceTree = "<group>"; };
-		4FA5A72319A2705700198947 /* document.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = document.h; sourceTree = "<group>"; };
-		4FA5A72419A2705700198947 /* encodedstream.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = encodedstream.h; sourceTree = "<group>"; };
-		4FA5A72519A2705700198947 /* encodings.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = encodings.h; sourceTree = "<group>"; };
-		4FA5A72719A2705700198947 /* en.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = en.h; sourceTree = "<group>"; };
-		4FA5A72819A2705700198947 /* error.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = error.h; sourceTree = "<group>"; };
-		4FA5A72919A2705700198947 /* filereadstream.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = filereadstream.h; sourceTree = "<group>"; };
-		4FA5A72A19A2705700198947 /* filestream.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = filestream.h; sourceTree = "<group>"; };
-		4FA5A72B19A2705700198947 /* filewritestream.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; path = filewritestream.h; sourceTree = "<group>"; };
-		4FA5A72D19A2705700198947 /* dtoa.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dtoa.h; sourceTree = "<group>"; };
-		4FA5A72E19A2705700198947 /* itoa.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = itoa.h; sourceTree = "<group>"; };
-		4FA5A72F19A2705700198947 /* meta.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = meta.h; sourceTree = "<group>"; };
-		4FA5A73019A2705700198947 /* pow10.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pow10.h; sourceTree = "<group>"; };
-		4FA5A73119A2705700198947 /* stack.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stack.h; sourceTree = "<group>"; };
-		4FA5A73219A2705700198947 /* strfunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = strfunc.h; sourceTree = "<group>"; };
-		4FA5A73319A2705700198947 /* license.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
-		4FA5A73419A2705700198947 /* memorybuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = memorybuffer.h; sourceTree = "<group>"; };
-		4FA5A73519A2705700198947 /* memorystream.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = memorystream.h; sourceTree = "<group>"; };
-		4FA5A73719A2705700198947 /* inttypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = inttypes.h; sourceTree = "<group>"; };
-		4FA5A73819A2705700198947 /* stdint.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stdint.h; sourceTree = "<group>"; };
-		4FA5A73919A2705700198947 /* prettywriter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = prettywriter.h; sourceTree = "<group>"; };
-		4FA5A73A19A2705700198947 /* rapidjson.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rapidjson.h; sourceTree = "<group>"; };
-		4FA5A73B19A2705700198947 /* reader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = reader.h; sourceTree = "<group>"; };
-		4FA5A73C19A2705700198947 /* stringbuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stringbuffer.h; sourceTree = "<group>"; };
-		4FA5A73D19A2705700198947 /* writer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = writer.h; sourceTree = "<group>"; };
+		4FAF704119A4D68F006F17AB /* JSON.Path.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSON.Path.cpp; sourceTree = "<group>"; };
+		4FAF704419A4D71C006F17AB /* JSON.Modifiers.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSON.Modifiers.cpp; sourceTree = "<group>"; };
 		4FBD4FF319626975001F9784 /* xxhash.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = xxhash.c; sourceTree = "<group>"; };
 		4FBD4FF419626975001F9784 /* xxhash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = xxhash.h; sourceTree = "<group>"; };
 		4FDBB85119608D1500ACB9AC /* Job.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Job.cpp; sourceTree = "<group>"; };
@@ -104,6 +85,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4F50592E19A48D3800DCB69C /* libjansson.4.dylib in Frameworks */,
 				4FEC2ACB197C231000A446B9 /* libleveldb.dylib.1.9 in Frameworks */,
 				4F37453C195F30A30079028C /* libev.4.dylib in Frameworks */,
 			);
@@ -141,6 +123,7 @@
 		4F374524195F2F500079028C = {
 			isa = PBXGroup;
 			children = (
+				4F50592D19A48D3800DCB69C /* libjansson.4.dylib */,
 				4FEC2ACA197C231000A446B9 /* libleveldb.dylib.1.9 */,
 				4F37453B195F30A30079028C /* libev.4.dylib */,
 				4F37452F195F2F500079028C /* defer.io */,
@@ -167,73 +150,8 @@
 				4F1B58B41960865100AF87AB /* Transport */,
 				4F1B58B51960869500AF87AB /* Worker */,
 				4FDBB855196095F900ACB9AC /* Data */,
-				4FA5A72019A2704500198947 /* external */,
 			);
 			path = defer.io;
-			sourceTree = "<group>";
-		};
-		4FA5A72019A2704500198947 /* external */ = {
-			isa = PBXGroup;
-			children = (
-				4FA5A72119A2704500198947 /* rapidjson */,
-			);
-			path = external;
-			sourceTree = "<group>";
-		};
-		4FA5A72119A2704500198947 /* rapidjson */ = {
-			isa = PBXGroup;
-			children = (
-				4FA5A72219A2705700198947 /* allocators.h */,
-				4FA5A72319A2705700198947 /* document.h */,
-				4FA5A72419A2705700198947 /* encodedstream.h */,
-				4FA5A72519A2705700198947 /* encodings.h */,
-				4FA5A72619A2705700198947 /* error */,
-				4FA5A72919A2705700198947 /* filereadstream.h */,
-				4FA5A72A19A2705700198947 /* filestream.h */,
-				4FA5A72B19A2705700198947 /* filewritestream.h */,
-				4FA5A72C19A2705700198947 /* internal */,
-				4FA5A73319A2705700198947 /* license.txt */,
-				4FA5A73419A2705700198947 /* memorybuffer.h */,
-				4FA5A73519A2705700198947 /* memorystream.h */,
-				4FA5A73619A2705700198947 /* msinttypes */,
-				4FA5A73919A2705700198947 /* prettywriter.h */,
-				4FA5A73A19A2705700198947 /* rapidjson.h */,
-				4FA5A73B19A2705700198947 /* reader.h */,
-				4FA5A73C19A2705700198947 /* stringbuffer.h */,
-				4FA5A73D19A2705700198947 /* writer.h */,
-			);
-			path = rapidjson;
-			sourceTree = "<group>";
-		};
-		4FA5A72619A2705700198947 /* error */ = {
-			isa = PBXGroup;
-			children = (
-				4FA5A72719A2705700198947 /* en.h */,
-				4FA5A72819A2705700198947 /* error.h */,
-			);
-			path = error;
-			sourceTree = "<group>";
-		};
-		4FA5A72C19A2705700198947 /* internal */ = {
-			isa = PBXGroup;
-			children = (
-				4FA5A72D19A2705700198947 /* dtoa.h */,
-				4FA5A72E19A2705700198947 /* itoa.h */,
-				4FA5A72F19A2705700198947 /* meta.h */,
-				4FA5A73019A2705700198947 /* pow10.h */,
-				4FA5A73119A2705700198947 /* stack.h */,
-				4FA5A73219A2705700198947 /* strfunc.h */,
-			);
-			path = internal;
-			sourceTree = "<group>";
-		};
-		4FA5A73619A2705700198947 /* msinttypes */ = {
-			isa = PBXGroup;
-			children = (
-				4FA5A73719A2705700198947 /* inttypes.h */,
-				4FA5A73819A2705700198947 /* stdint.h */,
-			);
-			path = msinttypes;
 			sourceTree = "<group>";
 		};
 		4FDBB855196095F900ACB9AC /* Data */ = {
@@ -246,6 +164,8 @@
 				4FEC2ACC197C277800A446B9 /* Cache.cpp */,
 				4FEC2ACD197C277800A446B9 /* Cache.h */,
 				4FF1B41B1961C33400F50B64 /* JSON.cpp */,
+				4FAF704119A4D68F006F17AB /* JSON.Path.cpp */,
+				4FAF704419A4D71C006F17AB /* JSON.Modifiers.cpp */,
 				4FF1B41C1961C33400F50B64 /* JSON.h */,
 				4F96E502197C40C300F9CBCF /* Key.h */,
 				4F96E504197C46C300F9CBCF /* Key.cpp */,
@@ -309,6 +229,7 @@
 				4FEC2AC9197C226C00A446B9 /* DB.cpp in Sources */,
 				4F374540195F31100079028C /* Server.cpp in Sources */,
 				4FEC2ACE197C277800A446B9 /* Cache.cpp in Sources */,
+				4FAF704319A4D68F006F17AB /* JSON.Path.cpp in Sources */,
 				4F96E505197C46C300F9CBCF /* Key.cpp in Sources */,
 				4F1B58AC195F33FE00AF87AB /* ThreadPool.cpp in Sources */,
 				4F1B58AF19604F4B00AF87AB /* Client.cpp in Sources */,
@@ -317,6 +238,7 @@
 				4FF1B41D1961C33400F50B64 /* JSON.cpp in Sources */,
 				4FEC2AD1197C2AA900A446B9 /* Document.cpp in Sources */,
 				4FF38C7A196D2537001C03F2 /* Config.cpp in Sources */,
+				4FAF704619A4D71C006F17AB /* JSON.Modifiers.cpp in Sources */,
 				4FBD4FF519626975001F9784 /* xxhash.c in Sources */,
 				4F1B58A6195F324600AF87AB /* Thread.cpp in Sources */,
 			);

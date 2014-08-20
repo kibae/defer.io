@@ -16,7 +16,7 @@
 
 class System {
 public:
-	static Document::Status execute( Job*, JSONDoc& );
+	static Json execute( Job* );
 };
 
 #endif /* defined(__defer_io__System__) */

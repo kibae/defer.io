@@ -15,6 +15,8 @@
 
 #include <unordered_map>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <leveldb/db.h>
 
 class DB
