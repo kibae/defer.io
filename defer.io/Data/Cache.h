@@ -53,6 +53,9 @@ public:
 	static void flushAll();
 	static Cache *getCachePool( const uint8_t );
 	static Cache *getCachePool( const Key& );
+
+	static void setMemoryLimit( unsigned long mem );
+	static void setCountLimit( unsigned long cnt );
 };
 
 #endif /* defined(__defer_io__Cache__) */

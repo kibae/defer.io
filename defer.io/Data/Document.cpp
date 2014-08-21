@@ -9,20 +9,20 @@
 #include "Document.h"
 #include "Cache.h"
 
-Document::Document( const Key &k ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::Document( const Key &k, uint64_t version ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
 {
 }
 
-Document::Document( const Key &k, const std::string &v ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::Document( const Key &k, const std::string &v, uint64_t version ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
 {
 	setData( v );
 }
 
-Document::Document( DB::VBucket *b, const Key &k ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::Document( DB::VBucket *b, const Key &k, uint64_t version ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
 {
 }
 
-Document::Document( DB::VBucket *b, const Key &k, const std::string &v ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0)
+Document::Document( DB::VBucket *b, const Key &k, const std::string &v, uint64_t version ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
 {
 	setData( v );
 }
@@ -55,7 +55,10 @@ bool Document::save()
 
 	if ( _changed )
 	{
-		if ( bucket->set( key, out() ) )
+		std::string buf;
+		buf.assign( (char *) &_version, sizeof(uint64_t) );
+		buf.append( out() );
+		if ( bucket->set( key, buf ) )
 		{
 			_changed = false;
 			return true;
@@ -72,12 +75,29 @@ bool Document::changed()
 
 void Document::touch()
 {
+	versionIncr();
 	if ( !_changed )
 	{
 		_changed = true;
 		DB::changed();
 	}
 	_timeChanged = Util::microtime();
+}
+
+
+uint64_t Document::version()
+{
+	return _version;
+}
+
+void Document::setVersion( uint64_t v )
+{
+	_version = v;
+}
+
+uint64_t Document::versionIncr()
+{
+	return ++_version;
 }
 
 void Document::created()
@@ -116,7 +136,6 @@ Document *Document::getOrCreate( const Key &k )
 		return NULL;
 	}
 
-	std::string	v;
 	if ( seq != cache->seq )
 	{
 		//check cache again
@@ -129,6 +148,7 @@ Document *Document::getOrCreate( const Key &k )
 		}
 	}
 
+	std::string	v;
 	bool res = false;
 	try
 	{
@@ -143,7 +163,8 @@ Document *Document::getOrCreate( const Key &k )
 
 	if ( res )
 	{
-		doc = new Document( bucket, k, v );
+		uint64_t version = *((uint64_t *) v.c_str());
+		doc = new Document( bucket, k, v.substr(sizeof(uint64_t)), version );
 	}
 	else
 	{

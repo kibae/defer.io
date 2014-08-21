@@ -32,6 +32,7 @@ int main( int argc, const char * argv[] )
 
 	//Config setting
 	DB::init( config->values["datadir"], config->numVal( "sync_request_interval", Config::DEF_SYNC_REQ_INTERVAL ) );
+
 	Cache::init( config->numVal( "cache_memory_limit", Config::DEF_CACHE_MEMORY_LIMIT ), config->numVal( "cache_count_limit", Config::DEF_CACHE_COUNT_LIMIT ) );
 
 	short port = config->numVal( "port", 7654 );

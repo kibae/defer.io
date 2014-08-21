@@ -15,16 +15,25 @@ unsigned long			Cache::perCountLimit = ceil( ((double) Config::DEF_CACHE_COUNT_L
 
 void Cache::init( long mem, long cnt )
 {
-	Cache::memoryLimit = mem;
-	Cache::countLimit = cnt;
-	Cache::perCountLimit = ceil( ((double) cnt)/((double) Key::lockSize) );
-
+	setMemoryLimit( mem );
+	setCountLimit( cnt );
 	Json::init();
 
 	for ( uint8_t i=0; i < Key::lockSize; i++ )
 	{
 		pool.push_back( new Cache() );
 	}
+}
+
+void Cache::setMemoryLimit( unsigned long mem )
+{
+	Cache::memoryLimit = mem;
+}
+
+void Cache::setCountLimit( unsigned long cnt )
+{
+	Cache::countLimit = cnt;
+	Cache::perCountLimit = ceil( ((double) cnt)/((double) Key::lockSize) );
 }
 
 Cache::Cache(): _changed(0), _lastChanged(0), seq(0)

@@ -34,11 +34,13 @@ private:
 
 	std::string		_out;
 	uint64_t		_timeOutGenerated;
+
+	uint64_t		_version;
 public:
-	Document( const Key & );
-	Document( const Key &, const std::string & );
-	Document( DB::VBucket *b, const Key & );
-	Document( DB::VBucket *b, const Key &, const std::string & );
+	Document( const Key &, uint64_t version=0 );
+	Document( const Key &, const std::string &, uint64_t version=0 );
+	Document( DB::VBucket *b, const Key &, uint64_t version=0 );
+	Document( DB::VBucket *b, const Key &, const std::string &, uint64_t version=0 );
 	~Document();
 
 	void setBucket( DB::VBucket *b );
@@ -47,6 +49,10 @@ public:
 	Key &getKey();
 
 	bool save();
+
+	uint64_t version();
+	void setVersion( uint64_t v );
+	uint64_t versionIncr();
 
 	bool changed();
 	void touch();
