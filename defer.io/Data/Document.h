@@ -62,9 +62,19 @@ public:
 
 	enum CMD : uint8_t {	//arg
 		AUTH = 10,
-		SYSTEM_CMD = 70,
+		//system
+		SYSTEM_CMD = 50,
 		FlushCache,
+		Status,
 
+		//scale-out
+		SCALEOUT_CMD = 70,
+		Mirror,				//[bucket id], each touch
+		MirrorLazy,			//[bucket id], each save
+		ShardExport,		//[bucket id]
+		ShardExportGet,		//has key
+
+		//object modifier
 		OBJECT_CMD = 90,	//char(d)
 		Sync = 91,
 

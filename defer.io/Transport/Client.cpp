@@ -9,9 +9,12 @@
 #include "Client.h"
 #include "Job.h"
 #include "ThreadPool.h"
+#include "Status.h"
 
 Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), connected(true), authorized(0), requested(0), working(0), rio(), rbuf(), rbuf_off(0), wio(), wbuf(), wbuf_off(0)
 {
+	Status::clientRetain();
+
 	fcntl( sock, F_SETFL, fcntl( sock, F_GETFL, 0 ) | O_NONBLOCK );
 
 	rbuf.reserve( 1024 );
@@ -34,6 +37,7 @@ void Client::disconnect()
 {
 	if ( connected )
 	{
+		Status::clientRelease();
 		connected = false;
 		rio.stop();
 		wio.stop();

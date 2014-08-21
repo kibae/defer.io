@@ -13,28 +13,11 @@ const Json Json::Zero(0);
 const Json Json::True(true);
 const Json Json::False(false);
 
-std::atomic<ssize_t> Json::Memory::used(0);
-
-void Json::Memory::retain( ssize_t sz )
-{
-	used += sz;
-}
-
-void Json::Memory::release( ssize_t sz )
-{
-	used -= sz;
-}
-
-ssize_t Json::Memory::size()
-{
-	return used;
-}
-
 static void *sized_malloc( size_t size )
 {
 	char *ptr = (char *) malloc( size + sizeof(size_t) );
 	*((size_t *)ptr) = size;
-	Json::Memory::retain( size );
+	Status::memoryRetain( size );
 
 	return ptr + sizeof(size_t);
 }
@@ -47,7 +30,7 @@ static void sized_free( void *ptr )
 	p -= sizeof(size_t);
 
 	size = *((size_t *)p);
-	Json::Memory::release( size );
+	Status::memoryRelease( size );
 
 	free(p);
 }
@@ -260,13 +243,13 @@ size_t Json::size() const
 }
 
 //setter
-Json Json::setObjMember( std::string&k, Json &member )
+Json Json::setObjMember( std::string k, Json member )
 {
 	json_object_set( data, k.c_str(), member.data );
 	return json_object_get( data, k.c_str() );
 }
 
-Json Json::setArrayMember( int index, Json &member )
+Json Json::setArrayMember( int index, Json member )
 {
 	while ( index >= json_array_size( data ) )
 		json_array_append( data, json_null() );
@@ -365,7 +348,7 @@ bool Json::parse( const std::string &buf )
 
 std::string Json::stringify()
 {
-	char *buf = json_dumps( data, JSON_COMPACT | JSON_ENCODE_ANY );
+	char *buf = json_dumps( data, JSON_COMPACT | JSON_PRESERVE_ORDER | JSON_ENCODE_ANY );
 	if ( buf != NULL )
 	{
 		std::string res( buf );

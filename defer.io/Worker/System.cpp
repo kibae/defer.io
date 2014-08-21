@@ -9,6 +9,7 @@
 #include "System.h"
 #include "Document.h"
 #include "Cache.h"
+#include "Status.h"
 
 Json System::execute( Job *job )
 {
@@ -18,6 +19,8 @@ Json System::execute( Job *job )
 		case Document::CMD::FlushCache:
 			Cache::flushAll();
 			break;
+		case Document::CMD::Status:
+			return *Status::dump();
 		default:
 			return *Json::False;
 			break;

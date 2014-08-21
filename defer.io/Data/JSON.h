@@ -9,7 +9,10 @@
 #ifndef __defer_io__JSON__
 #define __defer_io__JSON__
 
+class Json;
+
 #include "../include.h"
+#include "Status.h"
 
 #include <vector>
 
@@ -21,7 +24,6 @@ class Json
 public:
 	static void init();
 	class Path;
-	class Memory;
 
 	//static
 	const static Json Null;
@@ -59,8 +61,9 @@ public:
 	size_t size() const;
 
 	//setter
-	Json setObjMember( std::string&k, Json &member );
-	Json setArrayMember( int index, Json &member );
+	//Json setObjMember( std::string k, Json &member );
+	Json setObjMember( std::string k, Json member );
+	Json setArrayMember( int index, Json member );
 
 	//getter
 	bool asBoolean();
@@ -175,16 +178,5 @@ public:
 
 	Argument &getLastArgument();
 };
-
-class Json::Memory
-{
-	static std::atomic<ssize_t>		used;
-public:
-	static void retain( ssize_t sz );
-	static void release( ssize_t sz );
-	static ssize_t size();
-};
-
-
 
 #endif /* defined(__defer_io__JSON__) */

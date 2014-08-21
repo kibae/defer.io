@@ -14,6 +14,7 @@
 		4F374533195F2F500079028C /* defer_io.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = 4F374532195F2F500079028C /* defer_io.1 */; };
 		4F37453C195F30A30079028C /* libev.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F37453B195F30A30079028C /* libev.4.dylib */; };
 		4F374540195F31100079028C /* Server.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F37453E195F31100079028C /* Server.cpp */; };
+		4F4DFE4319A6826100CBFB86 /* Status.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F4DFE4119A6826100CBFB86 /* Status.cpp */; };
 		4F50592E19A48D3800DCB69C /* libjansson.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 4F50592D19A48D3800DCB69C /* libjansson.4.dylib */; };
 		4F52CB8619A1545F00EEE00D /* System.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F52CB8419A1545F00EEE00D /* System.cpp */; };
 		4F96E505197C46C300F9CBCF /* Key.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4F96E504197C46C300F9CBCF /* Key.cpp */; };
@@ -55,6 +56,8 @@
 		4F37453B195F30A30079028C /* libev.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libev.4.dylib; path = ../../../../usr/local/Cellar/libev/4.15/lib/libev.4.dylib; sourceTree = "<group>"; };
 		4F37453E195F31100079028C /* Server.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Server.cpp; sourceTree = "<group>"; };
 		4F37453F195F31100079028C /* Server.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Server.h; sourceTree = "<group>"; };
+		4F4DFE4119A6826100CBFB86 /* Status.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Status.cpp; sourceTree = "<group>"; };
+		4F4DFE4219A6826100CBFB86 /* Status.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Status.h; sourceTree = "<group>"; };
 		4F50592D19A48D3800DCB69C /* libjansson.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libjansson.4.dylib; path = ../../../../opt/local/lib/libjansson.4.dylib; sourceTree = "<group>"; };
 		4F52CB8419A1545F00EEE00D /* System.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System.cpp; sourceTree = "<group>"; };
 		4F52CB8519A1545F00EEE00D /* System.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = System.h; sourceTree = "<group>"; };
@@ -116,6 +119,8 @@
 				4FDBB85219608D1500ACB9AC /* Job.h */,
 				4F52CB8419A1545F00EEE00D /* System.cpp */,
 				4F52CB8519A1545F00EEE00D /* System.h */,
+				4F4DFE4119A6826100CBFB86 /* Status.cpp */,
+				4F4DFE4219A6826100CBFB86 /* Status.h */,
 			);
 			path = Worker;
 			sourceTree = "<group>";
@@ -237,6 +242,7 @@
 				4F374531195F2F500079028C /* main.cpp in Sources */,
 				4FF1B41D1961C33400F50B64 /* JSON.cpp in Sources */,
 				4FEC2AD1197C2AA900A446B9 /* Document.cpp in Sources */,
+				4F4DFE4319A6826100CBFB86 /* Status.cpp in Sources */,
 				4FF38C7A196D2537001C03F2 /* Config.cpp in Sources */,
 				4FAF704619A4D71C006F17AB /* JSON.Modifiers.cpp in Sources */,
 				4FBD4FF519626975001F9784 /* xxhash.c in Sources */,

@@ -52,6 +52,8 @@ bool Cache::exists( const Key &key )
 
 void Cache::push( const Key &key, Document *datum, bool ignoreExists )
 {
+	Status::cacheInRetain();
+
 	wlock();
 	Document *check = data[key.str()];
 	if ( check != NULL )
@@ -60,6 +62,7 @@ void Cache::push( const Key &key, Document *datum, bool ignoreExists )
 		{
 			LLOG
 			delete check;
+			Status::cacheOutRetain();
 			//check->destroy();
 		}
 		else
@@ -79,6 +82,8 @@ void Cache::push( const Key &key, Document *datum, bool ignoreExists )
 			oldest->save();
 			data.erase( oldest->getKey().str() );
 			delete oldest;
+
+			Status::cacheOutRetain();
 		}
 	}
 	unlock();
@@ -94,6 +99,8 @@ Document *Cache::getCache( const Key &key )
 
 Document *Cache::get( const Key &key )
 {
+	Status::cacheReqRetain();
+
 	wlock();
 	Document *doc = data[key.str()];
 	if ( doc && list.front() != doc )
@@ -103,6 +110,9 @@ Document *Cache::get( const Key &key )
 		list.push_front( doc );
 	}
 	unlock();
+
+	if ( doc )
+		Status::cacheHitRetain();
 
 	return doc;
 }
@@ -151,6 +161,7 @@ void Cache::flushLast()
 			doc->save();
 		doc->unlock();
 		delete doc;
+		Status::cacheOutRetain();
 
 		seq++;
 	}
@@ -170,6 +181,7 @@ void Cache::flush()
 			doc->save();
 		doc->unlock();
 		delete doc;
+		Status::cacheOutRetain();
 	}
 	list.clear();
 	data.clear();
@@ -192,7 +204,7 @@ void Cache::syncAll()
 	}
 
 	long i = Cache::perCountLimit/3;
-	while ( i-- && Json::Memory::size() > Cache::memoryLimit )
+	while ( i-- && Status::memoryUsed() > Cache::memoryLimit )
 	{
 		for ( uint8_t i=0; i < Key::lockSize; i++ )
 		{

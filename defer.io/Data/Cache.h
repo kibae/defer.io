@@ -18,6 +18,7 @@ class Cache;
 #include <vector>
 #include "Document.h"
 #include "Key.h"
+#include "Status.h"
 
 class Cache: public RWLock
 {

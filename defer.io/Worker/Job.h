@@ -24,6 +24,7 @@ public:
 
 	Job( uint8_t cmd, std::string key, std::string data );
 	Job( uint8_t cmd, std::string key );
+	~Job();
 
 	typedef enum REQ_OPTION {
 		OPT_NO_RESULTSET = 'R',		//response only status/error

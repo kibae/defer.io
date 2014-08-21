@@ -10,6 +10,7 @@
 #include "Server.h"
 #include "Document.h"
 #include "System.h"
+#include "Status.h"
 
 Job::Job( const char *buf ): header(), key(), path(), data(), client(NULL), resHeader(), result()
 {
@@ -29,6 +30,7 @@ Job::Job( const char *buf ): header(), key(), path(), data(), client(NULL), resH
 	{
 		//connect or operation commands
 	}
+	Status::jobRetain();
 }
 
 Job::Job( uint8_t cmd, std::string _key, std::string _data ): header(), key(), path(), data(_data), client(NULL), resHeader(), result()
@@ -39,6 +41,7 @@ Job::Job( uint8_t cmd, std::string _key, std::string _data ): header(), key(), p
 
 	if ( header.keyLen > 0 )
 		initKey( _key );
+	Status::jobRetain();
 }
 
 Job::Job( uint8_t cmd, std::string _key ): header(), key(), path(), data(), client(NULL), result()
@@ -48,6 +51,12 @@ Job::Job( uint8_t cmd, std::string _key ): header(), key(), path(), data(), clie
 
 	if ( header.keyLen > 0 )
 		initKey( _key );
+	Status::jobRetain();
+}
+
+Job::~Job()
+{
+	Status::jobRelease();
 }
 
 void Job::initKey( std::string &k )
