@@ -150,12 +150,16 @@ bool DB::VBucket::setShardSource()
 
 bool DB::VBucket::hookTouch( Job *job )
 {
-	//TODO: implement
 	if ( _outOfService )
 		throw std::logic_error( "This virtual bucket is out of service" );
 	job->refCount++;
 	hooksTouch.push_back( job );
 	return true;
+}
+
+bool DB::VBucket::hasTookTouch()
+{
+	return hooksTouch.size() > 0;
 }
 
 bool DB::VBucket::hookSave( Job *job )
@@ -165,6 +169,20 @@ bool DB::VBucket::hookSave( Job *job )
 	job->refCount++;
 	hooksSave.push_back( job );
 	return true;
+}
+
+bool DB::VBucket::hasTookSave()
+{
+	return hooksSave.size() > 0;
+}
+
+void DB::VBucket::dispatchTouch( Document *doc )
+{
+	uint64_t timeSave = doc->timeSave();
+	std::string v( (char *) &timeSave, sizeof(uint64_t) );
+	v.append( doc->out() );
+
+	replBroadcast( hooksTouch, doc->getKey().str(), v );
 }
 
 bool DB::VBucket::dump( Job *job, uint64_t time )
@@ -227,4 +245,10 @@ void DB::changed()
 	{
 		syncCond.notify_one();
 	}
+}
+
+void DB::touched( Document *doc )
+{
+	if ( doc != NULL && doc->bucket != NULL && doc->bucket->hasTookTouch() )
+		doc->bucket->dispatchTouch( doc );
 }

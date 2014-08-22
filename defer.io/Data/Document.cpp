@@ -9,20 +9,20 @@
 #include "Document.h"
 #include "Cache.h"
 
-Document::Document( const Key &k, uint64_t timeSave ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
+Document::Document( const Key &k, uint64_t timeSave ): key(k), content(), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave), bucket(NULL)
 {
 }
 
-Document::Document( const Key &k, const std::string &v, uint64_t timeSave ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
+Document::Document( const Key &k, const std::string &v, uint64_t timeSave ): key(k), content(), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave), bucket(NULL)
 {
 	setData( v );
 }
 
-Document::Document( DB::VBucket *b, const Key &k, uint64_t timeSave ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
+Document::Document( DB::VBucket *b, const Key &k, uint64_t timeSave ): key(k), content(), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave), bucket(b)
 {
 }
 
-Document::Document( DB::VBucket *b, const Key &k, const std::string &v, uint64_t timeSave ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
+Document::Document( DB::VBucket *b, const Key &k, const std::string &v, uint64_t timeSave ): key(k), content(), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave), bucket(b)
 {
 	setData( v );
 }
@@ -75,13 +75,15 @@ bool Document::changed()
 
 void Document::touch()
 {
-	setTimeSave( Util::microtime() );
+	_timeChanged = Util::microtime();
+	setTimeSave( _timeChanged );
+
+	DB::touched( this );
 	if ( !_changed )
 	{
 		_changed = true;
 		DB::changed();
 	}
-	_timeChanged = Util::microtime();
 }
 
 

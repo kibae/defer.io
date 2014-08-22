@@ -26,8 +26,6 @@ private:
 	Key				key;
 	Json			content;
 
-	DB::VBucket		*bucket;
-
 	bool			_created;
 	bool			_changed;
 	uint64_t		_timeChanged;
@@ -37,6 +35,8 @@ private:
 
 	uint64_t		_timeSave;
 public:
+	DB::VBucket		*bucket;
+
 	Document( const Key &, uint64_t timeSave=0 );
 	Document( const Key &, const std::string &, uint64_t timeSave=0 );
 	Document( DB::VBucket *b, const Key &, uint64_t timeSave=0 );

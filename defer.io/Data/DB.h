@@ -21,6 +21,7 @@
 #include <condition_variable>
 #include <leveldb/db.h>
 
+class Document;
 class DB
 {
 	static std::thread				syncThread;
@@ -60,7 +61,10 @@ public:
 		bool setShardSource();
 
 		bool hookTouch( Job *job );
+		bool hasTookTouch();
+		void dispatchTouch( Document *doc );
 		bool hookSave( Job *job );
+		bool hasTookSave();
 		bool dump( Job *job, uint64_t time=-1 );
 
 		void replBroadcast( std::vector<Job*> &hooks, const std::string &k, const std::string &v );
@@ -74,6 +78,7 @@ public:
 	static bool get( const Key&, std::string *, bool force=false );
 	static void sync();
 	static void changed();
+	static void touched( Document *doc );
 };
 
 #endif /* defined(__defer_io__DB__) */
