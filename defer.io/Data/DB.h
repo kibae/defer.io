@@ -12,8 +12,10 @@
 #include "../include.h"
 
 #include "Key.h"
+#include "Client.h"
 
 #include <unordered_map>
+#include <vector>
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -34,28 +36,42 @@ public:
 
 	class VBucket: public RWLock {
 	private:
-		uint16_t			_id;
-		leveldb::DB			*db;
-		bool				exporting;
+		uint16_t				_id;
+		leveldb::DB				*db;
+		bool					_outOfService;
+
+		std::vector<Job*>		hooksTouch;
+		std::vector<Job*>		hooksSave;
 	public:
 		pthread_rwlock_t	keyLocks[Key::lockSize];
-		bool				readonly;
 
 		uint16_t id();
 		VBucket( uint16_t id );
 		~VBucket();
 
+		bool outOfService();
+
 		/// \brief Get datum from data bucket.
-		bool get( const Key&, std::string * );
+		bool get( const Key&, std::string *, bool force=false );
 
 		bool exists( const Key& );
 		bool set( const Key &, const std::string & );
+
+		bool setShardSource();
+
+		bool hookTouch( Job *job );
+		bool hookSave( Job *job );
+		bool dump( Job *job, uint64_t time=-1 );
+
+		void replBroadcast( std::vector<Job*> &hooks, const std::string &k, const std::string &v );
 	};
 
 	static std::unordered_map<uint16_t, DB::VBucket*> vBuckets;
 	typedef std::pair<uint16_t, DB::VBucket*> vBucketRow;
 
 	static VBucket *getBucket( const Key &k );
+	static VBucket *getBucket( const uint16_t id );
+	static bool get( const Key&, std::string *, bool force=false );
 	static void sync();
 	static void changed();
 };

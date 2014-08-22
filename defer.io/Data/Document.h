@@ -35,12 +35,12 @@ private:
 	std::string		_out;
 	uint64_t		_timeOutGenerated;
 
-	uint64_t		_version;
+	uint64_t		_timeSave;
 public:
-	Document( const Key &, uint64_t version=0 );
-	Document( const Key &, const std::string &, uint64_t version=0 );
-	Document( DB::VBucket *b, const Key &, uint64_t version=0 );
-	Document( DB::VBucket *b, const Key &, const std::string &, uint64_t version=0 );
+	Document( const Key &, uint64_t timeSave=0 );
+	Document( const Key &, const std::string &, uint64_t timeSave=0 );
+	Document( DB::VBucket *b, const Key &, uint64_t timeSave=0 );
+	Document( DB::VBucket *b, const Key &, const std::string &, uint64_t timeSave=0 );
 	~Document();
 
 	void setBucket( DB::VBucket *b );
@@ -50,9 +50,8 @@ public:
 
 	bool save();
 
-	uint64_t version();
-	void setVersion( uint64_t v );
-	uint64_t versionIncr();
+	uint64_t timeSave();
+	void setTimeSave( uint64_t v );
 
 	bool changed();
 	void touch();
@@ -69,10 +68,13 @@ public:
 
 		//scale-out
 		SCALEOUT_CMD = 70,
-		Mirror,				//[bucket id], each touch
-		MirrorLazy,			//[bucket id], each save
-		ShardExport,		//[bucket id]
-		ShardExportGet,		//has key
+
+		ReplStream,			//[bucket id], each touch
+		ReplStreamLazy,		//[bucket id], each save
+		ReplDump,			//[bucket id, timeSave], export all data of bucket
+
+		ShardSetSource = 75,//[bucket id], this bucket's status change to "out of service"
+		ShardGetForce,		//same as Get(force)
 
 		//object modifier
 		OBJECT_CMD = 90,	//char(d)

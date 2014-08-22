@@ -20,7 +20,7 @@ class Client
 {
 private:
 	int					sock;
-	bool				connected;
+	bool				_connected;
 
 	bool				authorized;
 
@@ -37,12 +37,15 @@ private:
 public:
 	Client( int sock, ev::loop_ref loop );
 
+	bool connected();
+
 	void error();
 	void disconnect();
 	void finalize();
 
 	void jobFinish( Job* );
 	void jobFinish( std::string& );
+	void jobResponse( std::string& );
 
 	void read_cb( ev::io &watcher, int revents );
 	void write_cb( ev::io &watcher, int revents );

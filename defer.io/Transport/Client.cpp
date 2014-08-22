@@ -11,7 +11,7 @@
 #include "ThreadPool.h"
 #include "Status.h"
 
-Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), connected(true), authorized(0), requested(0), working(0), rio(), rbuf(), rbuf_off(0), wio(), wbuf(), wbuf_off(0)
+Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), _connected(true), authorized(0), requested(0), working(0), rio(), rbuf(), rbuf_off(0), wio(), wbuf(), wbuf_off(0)
 {
 	Status::clientRetain();
 
@@ -28,6 +28,11 @@ Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), connected(true), au
 	wio.set( sock, ev::WRITE ); //not start
 }
 
+bool Client::connected()
+{
+	return _connected;
+}
+
 void Client::error()
 {
 	disconnect();
@@ -35,10 +40,10 @@ void Client::error()
 
 void Client::disconnect()
 {
-	if ( connected )
+	if ( _connected )
 	{
 		Status::clientRelease();
-		connected = false;
+		_connected = false;
 		rio.stop();
 		wio.stop();
 
@@ -104,22 +109,36 @@ void Client::read_cb( ev::io &watcher, int revents )
 	}
 }
 
+void Client::jobResponse( std::string &buf )
+{
+	wbuf.append( buf );
+	buf.clear();
+	if ( wbuf.length() > 0 && !wio.is_active() )
+		wio.start();
+}
+
 void Client::jobFinish( Job *job )
 {
-	jobFinish( job->result );
-	delete job;
+	if ( job->refCount <= 0 )
+	{
+		jobFinish( job->result );
+		delete job;
+	}
+	else
+	{
+		//must check connection before call this func.
+		jobResponse( job->result );
+	}
 }
 
 void Client::jobFinish( std::string &buf )
 {
 	if ( working > 0 )
 		working--;
-	if ( !connected )
+	if ( !_connected )
 		return finalize();
 
-	wbuf.append( buf );
-	if ( !wio.is_active() )
-		wio.start();
+	jobResponse( buf );
 }
 
 void Client::writeFinish()
@@ -132,7 +151,7 @@ void Client::writeFinish()
 ssize_t sent = 0;
 void Client::write_cb( ev::io &watcher, int revents )
 {
-	if ( !connected )
+	if ( !_connected )
 		return writeFinish();
 
 	ssize_t size = wbuf.length() - wbuf_off;

@@ -16,7 +16,7 @@
 
 class System {
 public:
-	static Json execute( Job* );
+	static Json execute( Job*, Json& );
 };
 
 #endif /* defined(__defer_io__System__) */

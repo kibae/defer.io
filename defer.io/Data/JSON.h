@@ -62,8 +62,8 @@ public:
 
 	//setter
 	//Json setObjMember( std::string k, Json &member );
-	Json setObjMember( std::string k, Json member );
-	Json setArrayMember( int index, Json member );
+	Json setObjMember( const std::string k, const Json member );
+	Json setArrayMember( const int index, const Json member );
 
 	//getter
 	bool asBoolean();
@@ -126,8 +126,11 @@ public:
 	//error
 	enum Status : uint16_t {
 		OK = 200,
+
 		NotFound = 404,
 		LogicError = 500,
+
+		ReplEntry = 1000,
 	};
 
 	class Error : public std::runtime_error {

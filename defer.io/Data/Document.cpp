@@ -9,20 +9,20 @@
 #include "Document.h"
 #include "Cache.h"
 
-Document::Document( const Key &k, uint64_t version ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
+Document::Document( const Key &k, uint64_t timeSave ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
 {
 }
 
-Document::Document( const Key &k, const std::string &v, uint64_t version ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
+Document::Document( const Key &k, const std::string &v, uint64_t timeSave ): key(k), content(), bucket(NULL), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
 {
 	setData( v );
 }
 
-Document::Document( DB::VBucket *b, const Key &k, uint64_t version ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
+Document::Document( DB::VBucket *b, const Key &k, uint64_t timeSave ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
 {
 }
 
-Document::Document( DB::VBucket *b, const Key &k, const std::string &v, uint64_t version ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _version(version)
+Document::Document( DB::VBucket *b, const Key &k, const std::string &v, uint64_t timeSave ): key(k), content(), bucket(b), _created(false), _changed(false), _timeChanged(0), _out(), _timeOutGenerated(0), _timeSave(timeSave)
 {
 	setData( v );
 }
@@ -56,7 +56,7 @@ bool Document::save()
 	if ( _changed )
 	{
 		std::string buf;
-		buf.assign( (char *) &_version, sizeof(uint64_t) );
+		buf.assign( (char *) &_timeSave, sizeof(uint64_t) );
 		buf.append( out() );
 		if ( bucket->set( key, buf ) )
 		{
@@ -75,7 +75,7 @@ bool Document::changed()
 
 void Document::touch()
 {
-	versionIncr();
+	setTimeSave( Util::microtime() );
 	if ( !_changed )
 	{
 		_changed = true;
@@ -85,19 +85,14 @@ void Document::touch()
 }
 
 
-uint64_t Document::version()
+uint64_t Document::timeSave()
 {
-	return _version;
+	return _timeSave;
 }
 
-void Document::setVersion( uint64_t v )
+void Document::setTimeSave( uint64_t v )
 {
-	_version = v;
-}
-
-uint64_t Document::versionIncr()
-{
-	return ++_version;
+	_timeSave = v;
 }
 
 void Document::created()
@@ -163,8 +158,8 @@ Document *Document::getOrCreate( const Key &k )
 
 	if ( res )
 	{
-		uint64_t version = *((uint64_t *) v.c_str());
-		doc = new Document( bucket, k, v.substr(sizeof(uint64_t)), version );
+		uint64_t timeSave = *((uint64_t *) v.c_str());
+		doc = new Document( bucket, k, v.substr(sizeof(uint64_t)), timeSave );
 	}
 	else
 	{

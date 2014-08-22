@@ -243,13 +243,13 @@ size_t Json::size() const
 }
 
 //setter
-Json Json::setObjMember( std::string k, Json member )
+Json Json::setObjMember( const std::string k, const Json member )
 {
 	json_object_set( data, k.c_str(), member.data );
 	return json_object_get( data, k.c_str() );
 }
 
-Json Json::setArrayMember( int index, Json member )
+Json Json::setArrayMember( const int index, const Json member )
 {
 	while ( index >= json_array_size( data ) )
 		json_array_append( data, json_null() );

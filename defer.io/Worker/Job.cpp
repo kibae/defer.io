@@ -12,28 +12,22 @@
 #include "System.h"
 #include "Status.h"
 
-Job::Job( const char *buf ): header(), key(), path(), data(), client(NULL), resHeader(), result()
+Job::Job( const char *buf ): refCount(0), header(), key(), path(), data(), client(NULL), result()
 {
 	memcpy( &header, buf, sizeof(Header) );
-	if ( header.cmd > Document::CMD::OBJECT_CMD )
+	if ( header.keyLen > 0 )
 	{
-		if ( header.keyLen > 0 )
-		{
-			std::string k( &(buf[sizeof(header)]), header.keyLen );
-			initKey( k );
-		}
+		std::string k( &(buf[sizeof(header)]), header.keyLen );
+		initKey( k );
+	}
 
-		if ( header.dataLen > 0 )
-			data.append( &(buf[sizeof(header)+header.keyLen]), header.dataLen );
-	}
-	else
-	{
-		//connect or operation commands
-	}
+	if ( header.dataLen > 0 )
+		data.append( &(buf[sizeof(header)+header.keyLen]), header.dataLen );
+
 	Status::jobRetain();
 }
 
-Job::Job( uint8_t cmd, std::string _key, std::string _data ): header(), key(), path(), data(_data), client(NULL), resHeader(), result()
+Job::Job( uint8_t cmd, std::string _key, std::string _data ): refCount(0), header(), key(), path(), data(_data), client(NULL), result()
 {
 	header.cmd = cmd;
 	header.keyLen = (uint16_t) _key.length();
@@ -44,7 +38,7 @@ Job::Job( uint8_t cmd, std::string _key, std::string _data ): header(), key(), p
 	Status::jobRetain();
 }
 
-Job::Job( uint8_t cmd, std::string _key ): header(), key(), path(), data(), client(NULL), result()
+Job::Job( uint8_t cmd, std::string _key ): refCount(0), header(), key(), path(), data(), client(NULL), result()
 {
 	header.cmd = cmd;
 	header.keyLen = (uint16_t) _key.length();
@@ -105,6 +99,8 @@ Job *Job::parse( const std::string &buf, size_t *buf_off )
 void Job::execute()
 {
 	std::string buf;
+	ResponseHeader resHeader;
+
 	resHeader.apikey = header.apikey;
 	resHeader.status = 404;
 
@@ -149,8 +145,10 @@ void Job::execute()
 		//system command
 		try
 		{
+			Json arg;
+			arg.parse( data );
 			resHeader.status = 200;
-			Json res = System::execute( this );
+			Json res = System::execute( this, arg );
 			buf.append( res.stringify() );
 		}
 		catch ( const Json::Error& le )

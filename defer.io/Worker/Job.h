@@ -20,6 +20,8 @@ class Job
 {
 	void initKey( std::string& );
 public:
+	std::atomic<uint32_t> refCount;
+
 	Job( const char *buf );
 
 	Job( uint8_t cmd, std::string key, std::string data );
@@ -50,6 +52,18 @@ public:
 		ResponseHeader(): status(0), apikey(0), dataLen(0) {}
 	} __attribute__((packed));
 
+	struct ReplEntryHeader
+	{
+		ResponseHeader	res;
+		uint16_t		kLen;
+		uint32_t		vLen;
+
+		ReplEntryHeader( const std::string &k, const std::string &v ): res(), kLen((uint16_t) k.length()), vLen((uint32_t) v.length()) {
+			res.status = Json::ReplEntry;
+			res.dataLen = (uint32_t) (sizeof(uint16_t)+sizeof(uint32_t)+kLen+vLen);
+		}
+	} __attribute__((packed));
+
 	Header				header;
 	Key					key;
 	Json::Path			path;
@@ -57,7 +71,6 @@ public:
 
 	Client				*client;
 
-	ResponseHeader		resHeader;
 	std::string			result;
 
 	void execute();

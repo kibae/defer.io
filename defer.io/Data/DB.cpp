@@ -33,7 +33,7 @@ void DB::init( const std::string &_datadir, const long _syncReqInterval )
 	}
 }
 
-DB::VBucket::VBucket( uint16_t id ): _id(id), db(NULL), exporting(false), readonly(false)
+DB::VBucket::VBucket( uint16_t id ): _id(id), db(NULL), _outOfService(false), hooksTouch(), hooksSave()
 {
 	leveldb::Options	options;
 	std::stringstream	path;
@@ -60,30 +60,76 @@ DB::VBucket::~VBucket()
 		delete db;
 		db = NULL;
 	}
+
+	for ( int i=0; i < hooksTouch.size(); i++ )
+	{
+		Job *job = hooksTouch[i];
+		job->refCount--;
+		job->client->jobFinish( job );
+	}
+	hooksTouch.clear();
+
+	for ( int i=0; i < hooksSave.size(); i++ )
+	{
+		Job *job = hooksSave[i];
+		job->refCount--;
+		job->client->jobFinish( job );
+	}
+	hooksSave.clear();
 }
 
-bool DB::VBucket::get( const Key &k, std::string *v )
+bool DB::VBucket::get( const Key &k, std::string *v, bool force )
 {
-	if ( exporting )
-		throw std::logic_error( "Exporting" );
+	if ( _outOfService && !force )
+		throw std::logic_error( "This virtual bucket is out of service" );
 	leveldb::Status s = db->Get( leveldb::ReadOptions(), k.str(), v );
 	return s.ok();
 }
 
 bool DB::VBucket::exists( const Key &k )
 {
-	if ( exporting )
-		throw std::logic_error( "Exporting" );
+	if ( _outOfService )
+		throw std::logic_error( "This virtual bucket is out of service" );
 	leveldb::Status s = db->Get( leveldb::ReadOptions(), k.str(), NULL );
 	return !s.IsNotFound();
 }
 
 bool DB::VBucket::set( const Key &k, const std::string &v )
 {
-	if ( exporting )
-		throw std::logic_error( "Exporting" );
+	if ( _outOfService )
+		throw std::logic_error( "This virtual bucket is out of service" );
 	leveldb::Status s = db->Put( leveldb::WriteOptions(), k.str(), v );
+
+	if ( s.ok() && hooksSave.size() > 0 )
+		replBroadcast( hooksSave, k.str(), v );
+
 	return s.ok();
+}
+
+void DB::VBucket::replBroadcast( std::vector<Job*> &hooks, const std::string &k, const std::string &v )
+{
+	Job::ReplEntryHeader header( k, v );
+	std::string buf( (char *) &header, sizeof(Job::ReplEntryHeader) );
+	buf.append( k );
+	buf.append( v );
+
+	for ( long i=hooks.size(); i--; )
+	{
+		Job *job = hooks[i];
+		if ( job->client->connected() )
+			job->client->jobResponse( buf );
+		else
+		{
+			hooks.erase( hooksSave.begin()+i );
+			job->refCount--;
+			job->client->jobFinish( job );
+		}
+	}
+}
+
+bool DB::VBucket::outOfService()
+{
+	return _outOfService;
 }
 
 uint16_t DB::VBucket::id()
@@ -91,9 +137,76 @@ uint16_t DB::VBucket::id()
 	return _id;
 }
 
+bool DB::VBucket::setShardSource()
+{
+	if ( _outOfService )
+		return false;
+	_outOfService = true;
+
+	//TODO: collapse cache
+
+	return true;
+}
+
+bool DB::VBucket::hookTouch( Job *job )
+{
+	//TODO: implement
+	if ( _outOfService )
+		throw std::logic_error( "This virtual bucket is out of service" );
+	job->refCount++;
+	hooksTouch.push_back( job );
+	return true;
+}
+
+bool DB::VBucket::hookSave( Job *job )
+{
+	if ( _outOfService )
+		throw std::logic_error( "This virtual bucket is out of service" );
+	job->refCount++;
+	hooksSave.push_back( job );
+	return true;
+}
+
+bool DB::VBucket::dump( Job *job, uint64_t time )
+{
+	//TODO: implement
+	job->refCount++;
+	return true;
+}
+
 DB::VBucket *DB::getBucket( const Key &k )
 {
 	return vBuckets[k.bucketID()];
+}
+
+DB::VBucket *DB::getBucket( const uint16_t id )
+{
+	return vBuckets[id];
+}
+
+bool DB::get( const Key &k, std::string *buf, bool force )
+{
+	k.wlock();
+	VBucket *bucket = getBucket(k);
+	if ( bucket == NULL )
+	{
+		k.unlock();
+		return false;
+	}
+
+	bool res = false;
+	try
+	{
+		res = bucket->get( k, buf, force );
+	}
+	catch ( const std::logic_error &le )
+	{
+		//TODO: log
+		k.unlock();
+		return false;
+	}
+	k.unlock();
+	return res;
 }
 
 void DB::sync()
