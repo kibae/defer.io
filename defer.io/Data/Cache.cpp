@@ -232,3 +232,34 @@ Cache *Cache::getCachePool( const Key &key )
 	return pool[key.cacheKey()];
 }
 
+void Cache::clearByBucket( DB::VBucket *bucket )
+{
+	for ( uint8_t i=0; i < Key::lockSize; i++ )
+	{
+		Cache *cache = pool[i];
+
+		cache->wlock();
+		std::list<Document*>::iterator it = cache->list.begin();
+		while ( it != cache->list.end() )
+		{
+			Document *doc = *it;
+			if ( doc->bucket == bucket )
+			{
+				cache->data.erase( doc->getKey().str() );
+				cache->list.erase( it++ );
+
+				doc->wlock();
+				if ( doc->changed() )
+					doc->save();
+				doc->unlock();
+				delete doc;
+
+				Status::cacheOutRetain();
+				continue;
+			}
+			++it;
+		}
+		cache->unlock();
+	}
+}
+

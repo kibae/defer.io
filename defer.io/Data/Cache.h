@@ -55,6 +55,8 @@ public:
 	static Cache *getCachePool( const uint8_t );
 	static Cache *getCachePool( const Key& );
 
+	static void clearByBucket( DB::VBucket *bucket );
+
 	static void setMemoryLimit( unsigned long mem );
 	static void setCountLimit( unsigned long cnt );
 };

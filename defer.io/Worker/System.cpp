@@ -48,7 +48,7 @@ Json System::execute( Job *job, Json &arg )
 		case Document::CMD::ReplDump:
 		{
 			DB::VBucket *bucket = getBucket( arg, 0 );
-			if ( bucket == NULL || bucket->outOfService() )
+			if ( bucket == NULL )
 				return *Json::False;
 
 			int64_t time = arg.size() > 1 ? arg[1].asNumber() : -1;

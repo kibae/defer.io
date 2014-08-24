@@ -141,7 +141,10 @@ bool DB::VBucket::setShardSource()
 		return false;
 	_outOfService = true;
 
-	//TODO: collapse cache
+	//clear cache
+	Cache::clearByBucket( this );
+
+	//continu dump
 
 	return true;
 }
