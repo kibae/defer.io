@@ -12,7 +12,7 @@
 #include "System.h"
 #include "Status.h"
 
-Job::Job( const char *buf ): refCount(0), header(), key(), path(), data(), client(NULL), result()
+Job::Job( const char *buf ): client(NULL), refCount(0), header(), key(), path(), data(), result()
 {
 	memcpy( &header, buf, sizeof(Header) );
 	if ( header.keyLen > 0 )
@@ -27,7 +27,7 @@ Job::Job( const char *buf ): refCount(0), header(), key(), path(), data(), clien
 	Status::jobRetain();
 }
 
-Job::Job( uint8_t cmd, std::string _key, std::string _data ): refCount(0), header(), key(), path(), data(_data), client(NULL), result()
+Job::Job( uint8_t cmd, std::string _key, std::string _data ): client(NULL), refCount(0), header(), key(), path(), data(_data), result()
 {
 	header.cmd = cmd;
 	header.keyLen = (uint16_t) _key.length();
@@ -38,7 +38,7 @@ Job::Job( uint8_t cmd, std::string _key, std::string _data ): refCount(0), heade
 	Status::jobRetain();
 }
 
-Job::Job( uint8_t cmd, std::string _key ): refCount(0), header(), key(), path(), data(), client(NULL), result()
+Job::Job( uint8_t cmd, std::string _key ): client(NULL), refCount(0), header(), key(), path(), data(), result()
 {
 	header.cmd = cmd;
 	header.keyLen = (uint16_t) _key.length();
@@ -50,6 +50,8 @@ Job::Job( uint8_t cmd, std::string _key ): refCount(0), header(), key(), path(),
 
 Job::~Job()
 {
+	if ( client != NULL )
+		client->jobFinish();
 	Status::jobRelease();
 }
 
@@ -74,7 +76,7 @@ void Job::initKey( std::string &k )
 
 #define KEY_MAX_LEN		(1024*16)	//16KB
 #define DATA_MAX_LEN	(1024*1024*16)	//16MB
-Job *Job::parse( const std::string &buf, size_t *buf_off )
+Job *Job::parse( const std::string &buf, size_t *buf_off, Client *client )
 {
 	const char	*data = &((buf)[*buf_off]);
 	Header		*header = (Header *) data;
@@ -93,7 +95,9 @@ Job *Job::parse( const std::string &buf, size_t *buf_off )
 
 	*buf_off += target_size;
 
-	return new Job( data );
+	Job *j = new Job( data );
+	j->client = client;
+	return j;
 }
 
 void Job::execute()
@@ -117,8 +121,12 @@ void Job::execute()
 			resHeader.status = 500;
 			resHeader.dataLen = (uint32_t) buf.length();
 
+			wlock();
 			result.append( (char *) &resHeader, sizeof(ResponseHeader) );
 			result.append( buf );
+			client->response( result );
+			unlock();
+
 			return;
 		}
 
@@ -164,20 +172,22 @@ void Job::execute()
 
 	resHeader.dataLen = (uint32_t) buf.length();
 
+	wlock();
 	result.append( (char *) &resHeader, sizeof(ResponseHeader) );
 	result.append( buf );
+	client->response( result );
+	unlock();
 }
 
-void Job::finish( Job *job )
+bool Job::response( std::string &buf )
 {
-	if ( job->client != NULL )
-	{
-		Server::jobFinish( job );
-	}
-	else
-	{
-		job->dump();
-	}
+	return client->response( buf );
+}
+
+void Job::finish()
+{
+	if ( refCount <= 0 )
+		delete this;
 }
 
 void Job::dump()

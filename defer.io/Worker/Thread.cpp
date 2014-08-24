@@ -25,8 +25,7 @@ void Thread::proc() const
 		if ( job != NULL )
 		{
 			job->execute();
-
-			Job::finish( job );
+			job->finish();
 			job = NULL;
 		}
 	}

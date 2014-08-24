@@ -13,6 +13,7 @@
 
 #include "Key.h"
 #include "Client.h"
+#include "Job.h"
 
 #include <unordered_map>
 #include <vector>
@@ -65,7 +66,8 @@ public:
 		void dispatchTouch( Document *doc );
 		bool hookSave( Job *job );
 		bool hasTookSave();
-		bool dump( Job *job, uint64_t time=-1 );
+		bool dump( Job *job, int64_t time=-1 );
+		void dumpProc( Job *job, int64_t time );
 
 		void replBroadcast( std::vector<Job*> &hooks, const std::string &k, const std::string &v );
 	};

@@ -11,7 +11,7 @@
 
 ev::async				Server::aio;
 pthread_mutex_t			Server::_lock = PTHREAD_MUTEX_INITIALIZER;
-std::queue<Job *>		Server::finishedJobs;
+std::queue<Client *>	Server::sendClients;
 
 Server::Server( short _port, ev::loop_ref _loop ): io(), port(_port), sock(0), loop(_loop)
 {
@@ -75,26 +75,28 @@ void Server::end()
 
 
 //static
-void Server::jobFinish( Job *job )
+void Server::sendClient( Client *client )
 {
+	if ( client == NULL )
+		return;
 	lock();
-	finishedJobs.push( job );
+	sendClients.push( client );
 	aio.send();
 	unlock();
 }
 
 void Server::aio_cb( ev::async &watcher, int revents )
 {
-	while ( !finishedJobs.empty() )
+	while ( !sendClients.empty() )
 	{
 		lock();
-		Job *job = finishedJobs.front();
-		finishedJobs.pop();
+		Client *client = sendClients.front();
+		sendClients.pop();
 		unlock();
 
-		if ( job == NULL )
-			return;
+		if ( client == NULL )
+			break;
 
-		job->client->jobFinish( job );
+		client->wioStart();
 	}
 }

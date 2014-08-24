@@ -10,6 +10,7 @@
 #include "Job.h"
 #include "ThreadPool.h"
 #include "Status.h"
+#include "Server.h"
 
 Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), _connected(true), authorized(0), requested(0), working(0), rio(), rbuf(), rbuf_off(0), wio(), wbuf(), wbuf_off(0)
 {
@@ -26,11 +27,6 @@ Client::Client( int _sock, ev::loop_ref loop ): sock(_sock), _connected(true), a
 	wio.set<Client, &Client::write_cb>(this);
 	wio.set( loop );
 	wio.set( sock, ev::WRITE ); //not start
-}
-
-bool Client::connected()
-{
-	return _connected;
 }
 
 void Client::error()
@@ -59,7 +55,10 @@ void Client::disconnect()
 
 void Client::finalize()
 {
-	if ( working <= 0 )
+	if ( _connected )
+		return disconnect();
+
+	if ( working <= 0 && wbuf.length() <= 0 )
 		delete this;
 }
 
@@ -86,14 +85,13 @@ void Client::read_cb( ev::io &watcher, int revents )
 	{
 		try
 		{
-			Job *job = Job::parse( rbuf, &rbuf_off );
+			Job *job = Job::parse( rbuf, &rbuf_off, this );
 			while ( job != NULL )
 			{
 				working++;
-				job->client = this;
 				ThreadPool::push( job );
 
-				job = Job::parse( rbuf, &rbuf_off );
+				job = Job::parse( rbuf, &rbuf_off, this );
 			}
 
 			if ( rbuf.length() <= rbuf_off )
@@ -109,43 +107,14 @@ void Client::read_cb( ev::io &watcher, int revents )
 	}
 }
 
-void Client::jobResponse( std::string &buf )
-{
-	wbuf.append( buf );
-	buf.clear();
-	if ( wbuf.length() > 0 && !wio.is_active() )
-		wio.start();
-}
-
-void Client::jobFinish( Job *job )
-{
-	if ( job->refCount <= 0 )
-	{
-		jobFinish( job->result );
-		delete job;
-	}
-	else
-	{
-		//must check connection before call this func.
-		jobResponse( job->result );
-	}
-}
-
-void Client::jobFinish( std::string &buf )
-{
-	if ( working > 0 )
-		working--;
-	if ( !_connected )
-		return finalize();
-
-	jobResponse( buf );
-}
-
 void Client::writeFinish()
 {
 	wio.stop();
 	wbuf.clear();
 	wbuf_off = 0;
+
+	if ( !_connected )
+		finalize();
 }
 
 ssize_t sent = 0;
@@ -176,5 +145,44 @@ void Client::write_cb( ev::io &watcher, int revents )
 	}
 	else
 		writeFinish();
+}
+
+//friend method for server
+void Client::wioStart()
+{
+	wlock();
+	working--;
+	unlock();
+	if ( _connected )
+	{
+		if ( wbuf.length() > 0 && !wio.is_active() )
+			wio.start();
+	}
+	else
+		writeFinish();
+}
+
+//public methods for thread
+void Client::jobFinish()
+{
+	working--;
+	if ( !_connected )
+		finalize();
+}
+
+bool Client::response( std::string &buf )
+{
+	if ( _connected )
+	{
+		wlock();
+		wbuf.append( buf );
+		working++;
+		unlock();
+
+		Server::sendClient( this );
+		return true;
+	}
+	else
+		return false;
 }
 

@@ -65,7 +65,7 @@ DB::VBucket::~VBucket()
 	{
 		Job *job = hooksTouch[i];
 		job->refCount--;
-		job->client->jobFinish( job );
+		job->finish();
 	}
 	hooksTouch.clear();
 
@@ -73,7 +73,7 @@ DB::VBucket::~VBucket()
 	{
 		Job *job = hooksSave[i];
 		job->refCount--;
-		job->client->jobFinish( job );
+		job->finish();
 	}
 	hooksSave.clear();
 }
@@ -116,13 +116,11 @@ void DB::VBucket::replBroadcast( std::vector<Job*> &hooks, const std::string &k,
 	for ( long i=hooks.size(); i--; )
 	{
 		Job *job = hooks[i];
-		if ( job->client->connected() )
-			job->client->jobResponse( buf );
-		else
+		if ( !job->response( buf ) )
 		{
 			hooks.erase( hooksSave.begin()+i );
 			job->refCount--;
-			job->client->jobFinish( job );
+			job->finish();
 		}
 	}
 }
@@ -185,11 +183,65 @@ void DB::VBucket::dispatchTouch( Document *doc )
 	replBroadcast( hooksTouch, doc->getKey().str(), v );
 }
 
-bool DB::VBucket::dump( Job *job, uint64_t time )
+bool DB::VBucket::dump( Job *job, int64_t time )
 {
-	//TODO: implement
 	job->refCount++;
+
+	std::thread *proc = new std::thread( &DB::VBucket::dumpProc, this, job, time );
+	proc->detach();
+
 	return true;
+}
+
+void DB::VBucket::dumpProc( Job *job, int64_t time )
+{
+	Job::ReplEntryHeader header;
+
+	usleep( 10000 );
+
+	bool disconnected = false;
+
+	leveldb::Iterator* it = db->NewIterator( leveldb::ReadOptions() );
+	it->SeekToFirst();
+	while ( it->Valid() )
+	{
+		leveldb::Slice v = it->value();
+		if ( time > 0 )
+		{
+			uint64_t vTime = *((uint64_t *) v.ToString().c_str());
+			if ( vTime <= time )
+			{
+				it->Next();
+				continue;
+			}
+		}
+		leveldb::Slice k = it->key();
+
+		header.set( k.ToString(), v.ToString() );
+		std::string buf( (char *) &header, sizeof(Job::ReplEntryHeader) );
+		buf.append( k.ToString() );
+		buf.append( v.ToString() );
+
+		if ( !job->response( buf ) )
+		{
+			disconnected = true;
+			break;
+		}
+
+		it->Next();
+	}
+	delete it;
+
+	if ( !disconnected )
+	{
+		header.reset();
+		header.res.status = Json::ReplEntryFinish;
+		std::string buf( (char *) &header, sizeof(Job::ReplEntryHeader) );
+		job->response( buf );
+	}
+
+	job->refCount--;
+	job->finish();
 }
 
 DB::VBucket *DB::getBucket( const Key &k )

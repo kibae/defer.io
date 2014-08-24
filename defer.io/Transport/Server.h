@@ -10,14 +10,14 @@
 #define __defer_io__Server__
 
 #include "../include.h"
+#include "Client.h"
 #include <queue>
 
 #include <ev++.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#include "Job.h"
-
+class Client;
 class Server
 {
 private:
@@ -25,7 +25,7 @@ private:
 
 	int							port;
 	int							sock;
-	static std::queue<Job *>	finishedJobs;
+	static std::queue<Client *>	sendClients;
 public:
 	ev::loop_ref				loop;
 	static pthread_mutex_t		_lock;
@@ -45,7 +45,7 @@ public:
 		pthread_mutex_unlock( &_lock );
 	}
 
-	static void jobFinish( Job *job );
+	static void sendClient( Client *client );
 	static void aio_cb( ev::async &watcher, int revents );
 };
 

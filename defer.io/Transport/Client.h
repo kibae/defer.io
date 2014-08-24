@@ -10,14 +10,13 @@
 #define __defer_io__Client__
 
 #include "../include.h"
+#include "Server.h"
 #include <ev++.h>
 #include <sys/socket.h>
 
-class Client;
-#include "Job.h"
-
-class Client
+class Client : public RWLock
 {
+	friend class Server;
 private:
 	int					sock;
 	bool				_connected;
@@ -34,22 +33,21 @@ private:
 	ev::io				wio;
 	std::string			wbuf;
 	size_t				wbuf_off;
-public:
-	Client( int sock, ev::loop_ref loop );
-
-	bool connected();
 
 	void error();
 	void disconnect();
 	void finalize();
 
-	void jobFinish( Job* );
-	void jobFinish( std::string& );
-	void jobResponse( std::string& );
-
 	void read_cb( ev::io &watcher, int revents );
 	void write_cb( ev::io &watcher, int revents );
 	void writeFinish();
+
+	void wioStart();
+public:
+	Client( int sock, ev::loop_ref loop );
+
+	void jobFinish();
+	bool response( std::string& );
 };
 
 #endif /* defined(__defer_io__Client__) */

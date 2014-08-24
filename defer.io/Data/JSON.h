@@ -131,6 +131,7 @@ public:
 		LogicError = 500,
 
 		ReplEntry = 1000,
+		ReplEntryFinish = 1010,
 	};
 
 	class Error : public std::runtime_error {
