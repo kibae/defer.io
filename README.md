@@ -17,7 +17,6 @@ JSON based document oriented DBMS
  * String: append, prepend, length, sub
 * High performance
  * Sharded Memory cache.
- * Key level shared-lock.
  * Document level exclusive-lock.
  * libev async IO.
  * leveldb (google) based storage engine.
@@ -31,7 +30,7 @@ JSON based document oriented DBMS
 
 ## TODO
 - [ ] Feature: Auto sharding.
- - [ ] Cache out entries of current virtual bucket.
+ - [x] Cache out entries of current virtual bucket.
  - [ ] Implement "new shard" build sequence.
  - [ ] Implement dump pipe.
 - [ ] Parse configurations.
