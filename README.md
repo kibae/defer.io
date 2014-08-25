@@ -28,6 +28,14 @@ JSON based document oriented DBMS
  * Managed live sharding (max 100 cluster)
 * Async protocol
 
+## Requirement
+* leveldb
+ * https://code.google.com/p/leveldb/
+* jansson
+ * http://www.digip.org/jansson/
+* libev
+ * http://software.schmorp.de/pkg/libev.html
+
 ## TODO
 - [ ] Feature: Auto sharding.
  - [x] Cache out entries of current virtual bucket.
